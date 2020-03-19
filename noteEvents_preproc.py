@@ -3,7 +3,7 @@ import sys
 import re
 # import matplotlib
 import matplotlib.pyplot as plt
-# import nltk
+from nltk.tokenize import word_tokenize
 
 
 # Dico for references
@@ -14,6 +14,55 @@ afterones = {"10": "ten", "11": "eleven", "12": "twelve", "13": "thirteen", "14"
 tens = {"2": "twenty", "3": "thirty", "4": "fourty", "5": "fifty",
         "6": "sixty", "7": "seventy", "8": "eighty", "9": "ninety"}
 grand = {0: " billion ", 1: " million ", 2: " thousand ", 3: ""}
+
+
+def toss_off_rare_words(inputfile, outputfile, word_dict):
+    """ Toss off words that occur less than 5 times in the corpus """
+    processed_file = open(outputfile, 'w')
+    a_subset = {key: value for key, value in word_dict.items() if value < 5}
+    print("Size of words with less than 5 frequency:", len(a_subset))
+    with open(inputfile) as fp:
+        while True:
+            line = fp.readline()
+            if line == "\n" or "," in line or "\"" in line:
+                processed_file.write(line)
+                continue
+            if not line:
+                break
+            word_list = word_tokenize(line)
+            for w in word_list :
+                if w in a_subset.keys():
+                    re.sub(w, '', line)
+            processed_file.write(line)
+    processed_file.close()
+    input("Press Enter to continue...")
+    print(a_subset.items())
+
+
+def get_vocabulary(inputfile):
+    """ This procedure takes a MIMIC NoteEvents file and returns a dictionary
+    which contains words and their corresponding count """
+    # Ignore first line
+    # If comma in the line, ignore it as it is NOT text
+    # Otherwise, take the line, and foreach word in line, if word in dict.keys(), count++, otherwise new words
+    word_dict = dict()
+    with open(inputfile) as fp:
+        # Ignore first line
+        line = fp.readline()
+        while True:
+            line = fp.readline()
+            if line == "\n" or "," in line or "\"" in line:
+                continue
+            if not line:
+                break
+            word_list = word_tokenize(line)
+            for w in word_list :
+                if w in word_dict.keys():
+                    word_dict[w] += 1
+                else:
+                    word_dict[w] = 1
+    print("Vocabulary size:", len(word_dict))
+    return word_dict
 
 
 def show_histogram(distribution, n_bins, title):
@@ -395,6 +444,8 @@ def main():
     numbers_to_text('out_enum.csv', 'out_nonumbers.csv')
     special_char_remover('out_nonumbers.csv', 'out_nospecchar.csv')
     spaces_remover('out_nospecchar.csv', 'out_nospaces2.csv')
+    word_dico = get_vocabulary('out_nospaces2.csv')
+    toss_off_rare_words('out_nospaces2.csv', 'out_norare.csv', word_dico)
 
     # This is a stack of tests in order to check if the digit to text mapping works correctly
     # num_to_words(0)
