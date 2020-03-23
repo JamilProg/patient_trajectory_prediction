@@ -1,26 +1,38 @@
 #!/usr/bin/python
 import sys
-import re
-# import matplotlib
-import matplotlib.pyplot as plt
-from nltk.tokenize import word_tokenize
+# import re
+# from nltk.tokenize import word_tokenize
+from utils_preproc import *
 
 
-# Dico for references
-ones = {"1": "one", "2": "two", "3": "three", "4": "four", "5": "five",
-        "6": "six", "7": "seven", "8": "eight", "9": "nine"}
-afterones = {"10": "ten", "11": "eleven", "12": "twelve", "13": "thirteen", "14": "fourteen", "15": "fifteen",
-             "16": "sixteen", "17": "seventeen", "18": "eighteen", "19": "nineteen"}
-tens = {"2": "twenty", "3": "thirty", "4": "fourty", "5": "fifty",
-        "6": "sixty", "7": "seventy", "8": "eighty", "9": "ninety"}
-grand = {0: " billion ", 1: " million ", 2: " thousand ", 3: ""}
+# def toss_off_section_titles(inputfile, outputfile, section_list_file):
+#     """ Option 2 : Toss off section titles such as Social History: or Medications on Discharge """
+#     section_list = get_sectionlist(section_list_file)
+#     processed_file = open(outputfile, 'w')
+#     with open(inputfile) as fp:
+#         while True:
+#             line = fp.readline()
+#             if line == "\n" or "," in line or "\"" in line:
+#                 processed_file.write(line)
+#                 continue
+#             if not line:
+#                 break
+#             subst = ''
+#             try :
+#                 subst = next(substring for substring in section_list if substring in line)
+#             except StopIteration:
+#                 processed_file.write(line)
+#                 continue
+#             cleaned_line = re.sub(subst, '', line)
+#             processed_file.write(cleaned_line)
+#     processed_file.close()
 
 
 def toss_off_rare_words(inputfile, outputfile, word_dict):
     """ Toss off words that occur less than 5 times in the corpus """
     processed_file = open(outputfile, 'w')
     a_subset = {key: value for key, value in word_dict.items() if value < 5}
-    print("Size of words with less than 5 frequency:", len(a_subset))
+    print("Tossing off rare words.\nSize of words with less than 5 frequency:", len(a_subset))
     with open(inputfile) as fp:
         while True:
             line = fp.readline()
@@ -35,114 +47,8 @@ def toss_off_rare_words(inputfile, outputfile, word_dict):
                     re.sub(w, '', line)
             processed_file.write(line)
     processed_file.close()
-    input("Press Enter to continue...")
-    print(a_subset.items())
-
-
-def get_vocabulary(inputfile):
-    """ This procedure takes a MIMIC NoteEvents file and returns a dictionary
-    which contains words and their corresponding count """
-    # Ignore first line
-    # If comma in the line, ignore it as it is NOT text
-    # Otherwise, take the line, and foreach word in line, if word in dict.keys(), count++, otherwise new words
-    word_dict = dict()
-    with open(inputfile) as fp:
-        # Ignore first line
-        line = fp.readline()
-        while True:
-            line = fp.readline()
-            if line == "\n" or "," in line or "\"" in line:
-                continue
-            if not line:
-                break
-            word_list = word_tokenize(line)
-            for w in word_list :
-                if w in word_dict.keys():
-                    word_dict[w] += 1
-                else:
-                    word_dict[w] = 1
-    print("Vocabulary size:", len(word_dict))
-    return word_dict
-
-
-def show_histogram(distribution, n_bins, title):
-    # matplotlib.use("TkAgg")
-    plt.style.use('ggplot')
-    plt.title(title)
-    plt.hist(distribution, bins=n_bins)
-    plt.show()
-
-
-def get_paragraph_distribution(inputfile):
-    """ Displays the number of paragraph in the file for each size of character"""
-    # Array saving the length of paragraphs
-    par_lengths = []
-    with open(inputfile) as fp:
-        while True:
-            line = fp.readline()
-            if line == "\n":
-                continue
-            if not line:
-                break
-            par_lengths.append(len(line))
-    # Now we display the histograms
-    show_histogram(par_lengths, max(par_lengths), 'Number of paragraph with respect to its size')
-
-
-def replace_breakline_by_space(given_line):
-    """ Replaces '\n' by ' ' at the end of the given line if exists
-    This function is called by paragraphFinder
-    """
-    if len(given_line) == 0:
-        return given_line
-    if given_line[len(given_line)-1] != '\n':
-        return given_line
-    given_line = given_line.replace(given_line[len(given_line)-1], ' ')
-    return given_line
-
-
-def three_dig_to_words(val):
-    """ Function converting number to words of 3 digit
-    Code from Barath Kumar
-    Link : https://stackoverflow.com/questions/15598083/python-convert-numbers-to-words
-    """
-    if val != "000":
-        ans = ""
-        if val[0] in ones:
-            ans = ans + ones[val[0]] + " hundred "
-        if val[1:] in afterones:
-            ans = ans + afterones[val[1:]] + " "
-        elif val[1] in tens:
-            ans = ans + tens[val[1]] + " "
-        if val[2] in ones and val[1:] not in afterones:
-            ans = ans + ones[val[2]]
-        return ans
-
-
-def num_to_words(value):
-    """ This function takes an integer as an input, and outputs its text version
-    Works with integer from 0 to 999 999 999 999.
-    """
-    # Padding with zeros
-    pad = 12 - len(str(value))
-    padded = "0" * pad + str(value)
-
-    # Exception case
-    if padded == "000000000000":
-        return "zero"
-
-    # Preparing the values before computation
-    result = ""
-    number_groups = [padded[0:3], padded[3:6], padded[6:9], padded[9:12]]
-
-    for key, val in enumerate(number_groups):
-        if val != "000":
-            result = result + three_dig_to_words(val) + grand[key]
-
-    result = re.sub(r'(^ *| *$)', ' ', result)
-    # print(value)
-    # print(result)
-    return result
+    # If you want to see the tossed off words, uncomment the next line
+    # print(a_subset.items())
 
 
 def preprocess_enumerations(inputfile, outputfile):
@@ -257,7 +163,7 @@ def special_char_remover(inputfile, outputfile):
                 continue
 
             cleaned_line = re.sub(r'[*<>!?#.^;$&~_/\\]', '', line)
-            cleaned_line = re.sub(r'[-+=():,]', ' ', cleaned_line)
+            cleaned_line = re.sub(r'[-+=():,\']', ' ', cleaned_line)
             cleaned_line = re.sub(r'\w%', ' percent', cleaned_line)
             cleaned_line = re.sub(r'%', 'percent', cleaned_line)
             processed_file.write(cleaned_line)
@@ -432,20 +338,21 @@ def main():
     if len(sys.argv) != 2:
         print("One argument is necessary : the path to the NOTEEVENTS.csv file")
         return -1
-    anonimization_remover(sys.argv[1], 'out_noanonim.csv')
-    doctor_quotes_remover('out_noanonim.csv', 'out_nodocquotes.csv')
-    lower_all_text('out_nodocquotes.csv', 'out_lower.csv')
-    clean_useless_words('out_lower.csv', 'out_nobadwords.csv')
-    time_remover('out_nobadwords.csv', 'out_notime.csv')
-    repetitive_number_parentheses('out_notime.csv', 'out_noparentheses.csv')
-    spaces_remover('out_noparentheses.csv', 'out_nospaces.csv')
-    paragraph_finder('out_nospaces.csv', 'out_paragraphs.csv')
-    preprocess_enumerations('out_paragraphs.csv', 'out_enum.csv')
-    numbers_to_text('out_enum.csv', 'out_nonumbers.csv')
-    special_char_remover('out_nonumbers.csv', 'out_nospecchar.csv')
-    spaces_remover('out_nospecchar.csv', 'out_nospaces2.csv')
-    word_dico = get_vocabulary('out_nospaces2.csv')
-    toss_off_rare_words('out_nospaces2.csv', 'out_norare.csv', word_dico)
+    anonimization_remover(sys.argv[1], 'out_results/out_noanonim.csv')
+    doctor_quotes_remover('out_results/out_noanonim.csv', 'out_results/out_nodocquotes.csv')
+    # toss_off_section_titles('out_results/out_nodocquotes.csv', 'out_results/out_nosection.csv', 'needed_resources/section_list.csv')
+    lower_all_text('out_results/out_nodocquotes.csv', 'out_results/out_lower.csv')
+    clean_useless_words('out_results/out_lower.csv', 'out_results/out_nobadwords.csv')
+    time_remover('out_results/out_nobadwords.csv', 'out_results/out_notime.csv')
+    repetitive_number_parentheses('out_results/out_notime.csv', 'out_results/out_noparentheses.csv')
+    spaces_remover('out_results/out_noparentheses.csv', 'out_results/out_nospaces.csv')
+    paragraph_finder('out_results/out_nospaces.csv', 'out_results/out_paragraphs.csv')
+    preprocess_enumerations('out_results/out_paragraphs.csv', 'out_results/out_enum.csv')
+    numbers_to_text('out_results/out_enum.csv', 'out_results/out_nonumbers.csv')
+    special_char_remover('out_results/out_nonumbers.csv', 'out_results/out_nospecchar.csv')
+    spaces_remover('out_results/out_nospecchar.csv', 'out_results/out_nospaces2.csv')
+    word_dico = get_vocabulary('out_results/out_nospaces2.csv')
+    toss_off_rare_words('out_results/out_nospaces2.csv', 'out_results/out_norare.csv', word_dico)
 
     # This is a stack of tests in order to check if the digit to text mapping works correctly
     # num_to_words(0)
