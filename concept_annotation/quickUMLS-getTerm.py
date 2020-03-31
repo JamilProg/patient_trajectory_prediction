@@ -55,9 +55,10 @@ if __name__ == "__main__":
                         for terms in concepts:
                             terms = re.sub(r' ', '', terms)
                             resultline += terms + " "
-                    fw.write(resultline+'\n')
+                    if resultline is not "":
+                        fw.write(resultline+'\n')
                     concepts_output = []
-                    lineNb+=1
+                lineNb+=1
                 if count_quote >= 1 :
                     # End of clinical note
                     fw.write('"\n')
