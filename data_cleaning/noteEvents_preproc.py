@@ -5,6 +5,42 @@ import sys
 from utils_preproc import *
 
 
+# AFTER DOCTOR QUOTES, BEFORE EVERYTHING ELSE
+def shape_to_csv(inputfile, outputfile):
+    """ Ensures that we have a CSV shape : we separate the text columns from
+    the others columns with breaklines in the right places """
+    processed_file = open(outputfile, 'w')
+    count_comma = 0
+    within_text = False
+    with open(inputfile) as fp:
+        while True:
+            line = fp.readline()
+            if not line:
+                break
+            if count_comma == 10 or within_text:
+                if line.count("\"") == 0:
+                    processed_file.write(line)
+                    continue
+            else:
+                if line.count(",") == 0:
+                    processed_file.write(line)
+                    continue
+            index = -1
+            for c in line:
+                index += 1
+                if c == ',' and count_comma < 10 and within_text == False:
+                    count_comma += 1
+                if c == '\"':
+                    if count_comma == 10:
+                        count_comma = 0
+                        within_text = True
+                        line = line[:index+1] + '\n' + line[index+1:]
+                    elif within_text:
+                        within_text = False
+                        line = line[:index+1] + '\n' + line[index+1:]
+            processed_file.write(line)
+    processed_file.close()
+
 
 def toss_off_rare_words(inputfile, outputfile, word_dict):
     """ Toss off words that occur less than 5 times in the corpus """
@@ -318,7 +354,7 @@ def main():
         return -1
     anonimization_remover(sys.argv[1], 'out_results/out_noanonim.csv')
     doctor_quotes_remover('out_results/out_noanonim.csv', 'out_results/out_nodocquotes.csv')
-    # toss_off_section_titles('out_results/out_nodocquotes.csv', 'out_results/out_nosection.csv', 'needed_resources/section_list.csv')
+    shape_to_csv('out_results/out_nodocquotes.csv', 'out_results/out_csvshape.csv')
     lower_all_text('out_results/out_nodocquotes.csv', 'out_results/out_lower.csv')
     clean_useless_words('out_results/out_lower.csv', 'out_results/out_nobadwords.csv')
     time_remover('out_results/out_nobadwords.csv', 'out_results/out_notime.csv')
@@ -332,7 +368,6 @@ def main():
     word_dico = get_vocabulary('out_results/out_nospaces2.csv')
     toss_off_rare_words('out_results/out_nospaces2.csv', 'out_results/out_norare.csv', word_dico)
     spaces_remover('out_results/out_norare.csv', 'out_results/output.csv')
-
 
     # This is a stack of tests in order to check if the digit to text mapping works correctly
     # num_to_words(0)
