@@ -26,7 +26,7 @@ def splitDocument(sizeInMo):
 def main():
     """ Provides an argument : a path to the csv file (including the name of the csv) """
     if len(sys.argv) != 2:
-        print("One argument is necessary : the path to the NOTEEVENTS.csv file")
+        print("One argument is necessary : the path to the csv file")
         return -1
     splitDocument(50)
 

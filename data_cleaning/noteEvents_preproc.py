@@ -17,7 +17,7 @@ def shape_to_csv(inputfile, outputfile):
             line = fp.readline()
             if not line:
                 break
-            if count_comma == 10 or within_text:
+            if count_comma >= 10 or within_text:
                 if line.count("\"") == 0:
                     processed_file.write(line)
                     continue
@@ -25,27 +25,68 @@ def shape_to_csv(inputfile, outputfile):
                 if line.count(",") == 0:
                     processed_file.write(line)
                     continue
+            ## Some cases that could break the pipeline !
+            # if "Resident Progress Note, CCU" in line : # one additional comma to count
+            #     count_comma -= 1
+            # elif "Code Blue, Cardiac Arrest, Death" in line : # two add. comma to count
+            #     count_comma -= 2
+            # ...
+            ### START This part of code generalizes the previous example
+            cntcm = line.count(',')
+            cntqt = line.count('"')
+            if cntqt != 0 and cntcm != 0 :
+                if cntcm != 10 :
+                    if cntqt > 1 :
+                        groups = line.split('"')
+                        test = '"'.join(groups[:cntqt]), '"'.join(groups[cntqt:])
+                        if test[0].count(',') != 10 :
+                            count_comma -= test[0].count(',') - 10
+            ### END This part of code generalizes the previous example
             index = -1
             for c in line:
                 index += 1
-                if c == ',' and count_comma < 10 and within_text == False:
+                if c == ',' and within_text == False:
                     count_comma += 1
                 if c == '\"':
-                    if count_comma == 10:
+                    if count_comma >= 10:
                         count_comma = 0
                         within_text = True
                         line = line[:index+1] + '\n' + line[index+1:]
+                        index += 1
                     elif within_text:
                         within_text = False
                         line = line[:index+1] + '\n' + line[index+1:]
+                        line = line[:index] + '\n' + line[index:]
+                        index += 2
             processed_file.write(line)
+    processed_file.close()
+
+
+def remove_extra_commas(inputfile, outputfile):
+    """ Toss off commas that are within the Description field """
+    processed_file = open(outputfile, 'w')
+    with open(inputfile) as fp:
+        while True:
+            line = fp.readline()
+            if not line:
+                break
+            commas = line.count(',')
+            if line.count("\"") > 0 :
+                if (commas == 0 or commas == 10) :
+                    processed_file.write(line)
+                if commas > 10 :
+                    # remove_extra_commas
+                    cleaned_line = re.sub(r'"[^"]*"', lambda m: m.group(0).replace(',', ''), line)
+                    processed_file.write(cleaned_line)
+            else :
+                processed_file.write(line)
     processed_file.close()
 
 
 def toss_off_rare_words(inputfile, outputfile, word_dict):
     """ Toss off words that occur less than 5 times in the corpus """
     processed_file = open(outputfile, 'w')
-    a_subset = {key: value for key, value in word_dict.items() if value < 5}
+    a_subset = {key: value for key, value in word_dict.items() if value < 2}
     print("Tossing off rare words.\nSize of words with less than 5 frequency:", len(a_subset))
     with open(inputfile) as fp:
         while True:
@@ -88,8 +129,9 @@ def preprocess_enumerations(inputfile, outputfile):
                         if sum(len_list) / len(len_list) < 150:
                             current_list = re.sub(r'\n', ' ', current_list)
                     processed_file.write(current_list)
+                    start_of_enum = False # do not forget to disable it
                 break
-            if regex_start_enum.match(line):
+            if regex_start_enum.match(line) and line.count('"')==0:
                 cleaned_line = re.sub(r'^[1-9][0-9]?\. +|^#+ *', '', line)
                 current_list += cleaned_line
                 len_list.append(len(cleaned_line))
@@ -111,6 +153,9 @@ def preprocess_enumerations(inputfile, outputfile):
                     current_list = ""
                     start_of_enum = False
                     len_list = []
+
+                if line.count('"')!= 0:
+                    line = '\n' + line
                 processed_file.write(line)
     processed_file.close()
 
@@ -178,6 +223,7 @@ def special_char_remover(inputfile, outputfile):
 
             cleaned_line = re.sub(r'[*<>!?#.^;$&~_/\\]', '', line)
             cleaned_line = re.sub(r'[-+=():,\']', ' ', cleaned_line)
+            cleaned_line = re.sub(r'\[|\]', ' ', cleaned_line)
             cleaned_line = re.sub(r'\w%', ' percent', cleaned_line)
             cleaned_line = re.sub(r'%', 'percent', cleaned_line)
             processed_file.write(cleaned_line)
@@ -195,6 +241,9 @@ def time_remover(inputfile, outputfile):
             line = fp.readline()
             if not line:
                 break
+            if line.count("\"") > 0:
+                processed_file.write(line)
+                continue
             cleaned_line = re.sub(r'\d?\d:\d\d *?((am|pm)\W)?', '', line)
             cleaned_line = re.sub(r'\d?\d:\d\d:\d\d *?((am|pm)\W)?', '', cleaned_line)
             processed_file.write(cleaned_line)
@@ -325,21 +374,27 @@ def paragraph_finder(inputfile, outputfile):
         while line:
             line = fp.readline()
             # if line != "\n" and line != ".\n":
+            if line.count("\"")>0 :
+                if line.count("\"") == 1:
+                    line = '\n'+line
+                    processed_file.write(paragraph)
+                    paragraph = line
+                    continue
             if not bad_line_re.match(line):
                 if previous_was_empty:
                     # Save paragraph, now we have a new one
                     paragraph += "\n"
                     processed_file.write(paragraph)
-                    line = replace_breakline_by_space(line)
+                    line = replace_breakline_by_space(line, get_next_line_without_moving(fp))
                     paragraph = line
-                elif reg_exp_new_line.match(line) or line.find(",,,") != -1:
+                elif reg_exp_new_line.match(line):
                     # Save paragraph, now we have a new one
                     paragraph += "\n"
                     processed_file.write(paragraph)
-                    line = replace_breakline_by_space(line)
+                    line = replace_breakline_by_space(line, get_next_line_without_moving(fp))
                     paragraph = line
                 else:
-                    line = replace_breakline_by_space(line)
+                    line = replace_breakline_by_space(line, get_next_line_without_moving(fp))
                     paragraph += line
                 previous_was_empty = 0
             else:
@@ -355,7 +410,8 @@ def main():
     anonimization_remover(sys.argv[1], 'out_results/out_noanonim.csv')
     doctor_quotes_remover('out_results/out_noanonim.csv', 'out_results/out_nodocquotes.csv')
     shape_to_csv('out_results/out_nodocquotes.csv', 'out_results/out_csvshape.csv')
-    lower_all_text('out_results/out_nodocquotes.csv', 'out_results/out_lower.csv')
+    remove_extra_commas('out_results/out_csvshape.csv', 'out_results/out_noextracommas.csv')
+    lower_all_text('out_results/out_noextracommas.csv', 'out_results/out_lower.csv')
     clean_useless_words('out_results/out_lower.csv', 'out_results/out_nobadwords.csv')
     time_remover('out_results/out_nobadwords.csv', 'out_results/out_notime.csv')
     repetitive_number_parentheses('out_results/out_notime.csv', 'out_results/out_noparentheses.csv')

@@ -1,10 +1,12 @@
 #!/usr/bin/python
 import re
 import nltk
-
+nltk.download('punkt')
 
 def get_F1_score(P, R):
     """ compute F1-Score """
+    if P+R == 0:
+        return 0
     return ((2*P*R)/(P+R))
 
 
@@ -22,6 +24,8 @@ def compute_precision(outputfile, CUIs_to_find):
                 total += 1
                 if token in CUIs_to_find:
                     found += 1
+    if total == 0:
+        return 1
     precision = found / total
     # print ("P = " + str(found) + " / " + str(total))
     return precision
@@ -30,6 +34,8 @@ def compute_precision(outputfile, CUIs_to_find):
 def compute_recall(outputfile, CUIs_to_find):
     """ compute recall for the given file, given the CUI list to be found """
     total = len(CUIs_to_find)
+    if total == 0:
+        return 1
     found = 0
     with open(outputfile) as fp:
         while True:
@@ -54,7 +60,8 @@ def get_CUI_to_find(filename):
             line = fp.readline()
             if not line :
                 break
-            m = re.search(r'(\|\|C\d+\|\|)', line)
+            # m = re.search(r'(\|\|C\d+\|\|)', line)
+            m = re.search(r'(\|\|[^0-9].+?\|\|)', line)
             if m:
                 result = m.group()
                 result = re.sub(r'\|\|(.+)\|\|', r'\1', result)
@@ -72,28 +79,31 @@ def get_file_list(filename):
             line = fp.readline()
             if not line :
                 break
-            if line is not "list.txt":
+            if "list.txt" not in line:
                 file_list.append(line)
     return file_list
 
 
 def main():
-    file_list = get_file_list("../../Archive/Task1TrainSetGOLD200pipe/list.txt")
+    file_list = get_file_list("./Task1TrainSetGOLD200pipe/list.txt")
     print("Number of files : ", str(len(file_list)))
     P = []
     R = []
     F = []
     for fp in file_list:
-        cui_list = get_CUI_to_find("../../Archive/Task1TrainSetGOLD200pipe/" + fp)
-        precision = compute_precision("./test.txt", cui_list)
-        recall = compute_recall("./test.txt", cui_list)
+        fp = re.sub(r'\n', '', fp)
+        cui_list = get_CUI_to_find("./Task1TrainSetGOLD200pipe/" + fp)
+        print("liste = ", cui_list)
+        fp = re.sub(r'.pipe', '', fp)
+        precision = compute_precision("./data/outputchunkssmall/" + fp + ".output", cui_list)
+        recall = compute_recall("./data/outputchunkssmall/" + fp + ".output", cui_list)
         f1 = get_F1_score(precision, recall)
         P.append(precision)
         R.append(recall)
         F.append(f1)
-    print("Precision : " + str(mean(P)))
-    print("Recall : " + str(mean(R)))
-    print("F1-Score : " + str(mean(F)))
+    print("Precision : " + str(sum(P)/len(P)))
+    print("Recall : " + str(sum(R)/len(R)))
+    print("F1-Score : " + str(sum(F)/len(F)))
 
 
 if __name__ == '__main__':

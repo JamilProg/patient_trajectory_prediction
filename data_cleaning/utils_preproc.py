@@ -26,6 +26,14 @@ grand = {0: " billion ", 1: " million ", 2: " thousand ", 3: ""}
 #     return section_list
 
 
+def get_next_line_without_moving(f):
+    pos = f.tell()
+    line = f.readline()
+    line = f.readline()
+    f.seek(pos)
+    return line
+
+
 def get_vocabulary(inputfile):
     """ This procedure takes a MIMIC NoteEvents file and returns a dictionary
     which contains words and their corresponding count """
@@ -76,11 +84,15 @@ def get_paragraph_distribution(inputfile):
     show_histogram(par_lengths, max(par_lengths), 'Number of paragraph with respect to its size')
 
 
-def replace_breakline_by_space(given_line):
+def replace_breakline_by_space(given_line, next_line):
     """ Replaces '\n' by ' ' at the end of the given line if exists
     This function is called by paragraphFinder
     """
     if len(given_line) == 0:
+        return given_line
+    if given_line.count('"') > 0 :
+        return given_line
+    if next_line.count('"') > 0 :
         return given_line
     if given_line[len(given_line)-1] != '\n':
         return given_line
