@@ -86,7 +86,7 @@ def remove_extra_commas(inputfile, outputfile):
 def toss_off_rare_words(inputfile, outputfile, word_dict):
     """ Toss off words that occur less than 5 times in the corpus """
     processed_file = open(outputfile, 'w')
-    a_subset = {key: value for key, value in word_dict.items() if value < 2}
+    a_subset = {key: value for key, value in word_dict.items() if value < 5}
     print("Tossing off rare words.\nSize of words with less than 5 frequency:", len(a_subset))
     with open(inputfile) as fp:
         while True:

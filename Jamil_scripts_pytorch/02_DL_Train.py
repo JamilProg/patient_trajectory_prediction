@@ -16,24 +16,34 @@ class Network(nn.Module):
         super().__init__()
 
         # Inputs to hidden layer linear transformation
-        self.hidden = nn.Linear(ARGS.numberOfInputCUIInts + ARGS.numberOfInputCCSInts, 512)
+        ARGS.inputdim = ARGS.numberOfInputCUIInts + ARGS.numberOfInputCCSInts
+        # self.hidden = nn.Linear(ARGS.inputdim, ARGS.inputdim)
+        self.hidden = nn.Linear(ARGS.inputdim, 8192)
         # Hidden to hidden layer
-        self.hidden2 = nn.Linear(512, 256)
+        # self.hidden2 = nn.Linear(ARGS.inputdim, 8192)
+        self.hidden2 = nn.Linear(8192, ARGS.numberOfOutputCodes)
+        # Hidden to hidden layer
+        # self.hidden3 = nn.Linear(8192, 2048)
         # Hidden to output layer
-        self.output = nn.Linear(256, ARGS.numberOfOutputCodes)
+        # self.output = nn.Linear(2048, ARGS.numberOfOutputCodes)
 
         # Define sigmoid activation and softmax output
-        self.sigmoid = nn.Sigmoid()
+        # self.sigmoid = nn.Sigmoid()
+        self.relu = nn.ReLU()
         self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x):
         # Pass the input tensor through each of our operations
         x = self.hidden(x)
-        x = self.sigmoid(x)
+        # x = self.sigmoid(x)
+        x = self.relu(x)
         x = self.hidden2(x)
-        x = self.sigmoid(x)
-        x = self.output(x)
-        x = self.softmax(x)
+        # x = self.sigmoid(x)
+        x = self.relu(x)
+        # x = self.hidden3(x)
+        # x = self.sigmoid(x)
+        # x = self.output(x)
+        # x = self.softmax(x)
         return x
 
 
@@ -103,13 +113,13 @@ def load_tensors():
                 # Add every admission diagnoses in Y but the first one's diagnoses
                 diagnoses_trainListY.append(one_hot_CCS)
 
-	# Randomize in dimension 0 (patients order) keeping the notes and diagnoses in sync
-	# vectors_trainListX, diagnoses_trainListY, hadm_id_List = shuffle(notesVectors_trainListX, diagnoses_trainListY, hadm_id_List)
+    # Randomize in dimension 0 (patients order) keeping the notes and diagnoses in sync
+    # vectors_trainListX, diagnoses_trainListY, hadm_id_List = shuffle(notesVectors_trainListX, diagnoses_trainListY, hadm_id_List)
     mapIndexPosition = list(zip(vectors_trainListX, diagnoses_trainListY))
     random.shuffle(mapIndexPosition)
     vectors_trainListX, diagnoses_trainListY = zip(*mapIndexPosition)
 
-	# Create train and test sets for notes
+    # Create train and test sets for notes
     sizedata = len(vectors_trainListX)
     vectors_testListX = vectors_trainListX[int(math.ceil(0.9*sizedata)):sizedata]
     vectors_trainListX = vectors_trainListX[0:int(math.ceil(0.9*sizedata))]
@@ -137,13 +147,18 @@ def load_tensors():
 
 def train():
     X_train, X_test, Y_train, Y_test = load_tensors()
+    print("Available GPU :", torch.cuda.is_available())
     model = Network()
+    # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    # model.to(device)
     # Hyperparameters :
     epochs = ARGS.nEpochs
     batchsize = ARGS.batchSize
     learning_rate = 0.01
     log_interval = 2
-    criterion = nn.BCEWithLogitsLoss()
+    # criterion = nn.BCEWithLogitsLoss()
+    # criterion = nn.BCELoss()
+    criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(model.parameters(), lr=learning_rate)
 
     # Data loader
@@ -166,9 +181,11 @@ def train():
     for epoch in range(epochs):
         for batch_idx, (data, target) in enumerate(train_loader):
             data, target = Variable(data), Variable(target)
+            #data, target = Variable(data).to(device), Variable(target).to(device)
             optimizer.zero_grad()
             net_out = model(data)
-            loss = criterion(net_out, target)
+            # loss = criterion(net_out, target)
+            loss = criterion(net_out, torch.max(target,1)[1])
             loss.backward()
             optimizer.step()
             if batch_idx % log_interval == 0:

@@ -11,6 +11,8 @@ def metamap_preprocessing(filename, outputfile):
     negative_CUI_regex = r'N C\d\d\d\d\d\d\d'
     CUI_regex = r'C\d\d\d\d\d\d\d'
     type_regex = r'\[(.*)\]'
+    current_str_to_add = ""
+    pattern = re.compile(r'^.*?,.*?,\d+,')
     with open(filename, 'r') as fp:
         while True:
             cleaned_line = ""
@@ -19,12 +21,24 @@ def metamap_preprocessing(filename, outputfile):
                 break
             if line.startswith("Processing USER.tx.1: ") and note_ended == True and line.count(',') == 10:
                 cleaned_line = line.replace("Processing USER.tx.1: ", "")
-                note_ended = False
-                processed_file.write(cleaned_line)
+                # processed_file.write(cleaned_line)
+                # Avoid null HADM ID
+                if not re.match(pattern, cleaned_line) :
+                    print(cleaned_line)
+                    continue
+                # If full admission is not computed
+                if not cleaned_line.count('"')%2 == 0:
+                    index_to_last_quote = cleaned_line.rfind("\"")
+                    cleaned_line = cleaned_line[:index_to_last_quote+1]
+                    current_str_to_add = cleaned_line
+                    note_ended = False
             elif line.startswith("Processing USER.tx.1: ") and note_ended == False and line.count('"') == 1:
                 cleaned_line = line.replace("Processing USER.tx.1: ", "")
                 note_ended = True
-                processed_file.write('\n"\n')
+                # processed_file.write('"\n')
+                current_str_to_add += '"\n'
+                processed_file.write(current_str_to_add)
+                current_str_to_add = ""
             elif note_ended == False :
                 r = re.search(CUI_regex, line)
                 s = re.search(negative_CUI_regex, line)
@@ -41,14 +55,16 @@ def metamap_preprocessing(filename, outputfile):
                     cui = re.sub(r' ', '', cui)
                     for tui in type_list:
                         if tui in ALLOWED_TYPES:
-                            processed_file.write(cui + " ")
+                            # processed_file.write(cui + " ")
+                            current_str_to_add = current_str_to_add + cui + " "
                             break
                 elif r and t:
                     # Positive CUI case
                     cui = r.group(0)
                     for tui in type_list:
                         if tui in ALLOWED_TYPES:
-                            processed_file.write(cui + " ")
+                            # processed_file.write(cui + " ")
+                            current_str_to_add = current_str_to_add + cui + " "
                             break
 
 

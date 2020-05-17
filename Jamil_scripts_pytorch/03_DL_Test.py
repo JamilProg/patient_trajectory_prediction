@@ -12,29 +12,66 @@ import numpy as np
 from tqdm import tqdm_notebook as tqdm
 
 
+# class Network(nn.Module):
+#     def __init__(self):
+#         super().__init__()
+#
+#         # Inputs to hidden layer linear transformation
+#         self.hidden = nn.Linear(ARGS.inputdim, ARGS.inputdim)
+#         # Hidden to hidden layer
+#         self.hidden2 = nn.Linear(ARGS.inputdim, 8192)
+#         # Hidden to hidden layer
+#         self.hidden3 = nn.Linear(8192, 2048)
+#         # Hidden to output layer
+#         self.output = nn.Linear(2048, ARGS.numberOfOutputCodes)
+#
+#         # Define sigmoid activation and softmax output
+#         self.sigmoid = nn.Sigmoid()
+#         self.softmax = nn.Softmax(dim=1)
+#
+#     def forward(self, x):
+#         # Pass the input tensor through each of our operations
+#         x = self.hidden(x)
+#         x = self.sigmoid(x)
+#         x = self.hidden2(x)
+#         x = self.sigmoid(x)
+#         x = self.hidden3(x)
+#         x = self.sigmoid(x)
+#         x = self.output(x)
+#         x = self.softmax(x)
+#         return x
+
 class Network(nn.Module):
     def __init__(self):
         super().__init__()
 
-        # Inputs to hidden layer linear transformation
-        self.hidden = nn.Linear(ARGS.inputdim, 512)
+        # self.hidden = nn.Linear(ARGS.inputdim, ARGS.inputdim)
+        self.hidden = nn.Linear(ARGS.inputdim, 8192)
         # Hidden to hidden layer
-        self.hidden2 = nn.Linear(512, 256)
+        # self.hidden2 = nn.Linear(ARGS.inputdim, 8192)
+        self.hidden2 = nn.Linear(8192, ARGS.numberOfOutputCodes)
+        # Hidden to hidden layer
+        # self.hidden3 = nn.Linear(8192, 2048)
         # Hidden to output layer
-        self.output = nn.Linear(256, ARGS.numberOfOutputCodes)
+        # self.output = nn.Linear(2048, ARGS.numberOfOutputCodes)
 
         # Define sigmoid activation and softmax output
-        self.sigmoid = nn.Sigmoid()
+        # self.sigmoid = nn.Sigmoid()
+        self.relu = nn.ReLU()
         self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x):
         # Pass the input tensor through each of our operations
         x = self.hidden(x)
-        x = self.sigmoid(x)
+        # x = self.sigmoid(x)
+        x = self.relu(x)
         x = self.hidden2(x)
-        x = self.sigmoid(x)
-        x = self.output(x)
-        x = self.softmax(x)
+        # x = self.sigmoid(x)
+        x = self.relu(x)
+        # x = self.hidden3(x)
+        # x = self.sigmoid(x)
+        # x = self.output(x)
+        # x = self.softmax(x)
         return x
 
 
@@ -62,15 +99,64 @@ def test():
     # Load the model
     model = Network()
     model.load_state_dict(torch.load(ARGS.inputModel))
+    # for param_tensor in model.state_dict():
+    #     print(param_tensor, "\t", model.state_dict()[param_tensor].size())
+    total = 0
+    correct = 0
     model.eval()
-    predictions = np.zeros((len(X_test), ARGS.numberOfOutputCodes))
-    i = 0
-    for test_batch in tqdm(test_loader,disable = True):
-        # batch_prediction = model(test_batch).detach().cpu().numpy()
-        batch_prediction = model(test_batch)
-        predictions[i * BATCH_SIZE:(i+1) * BATCH_SIZE, :] = batch_prediction
-        i+=1
-    
+
+    P = list()
+    R = list()
+    # Precisions
+    for i in range(1,4):
+        for data in test_loader:
+            x, labels = data
+            outputs = model(x) # output is a tensor of size [BATCHSIZE][ARGS.numberOfOutputCodes]
+            # _, predicted = torch.max(outputs.data, 1)
+            _, predicted = torch.topk(outputs.data, i)
+            for y_predlist, y in zip(predicted, labels):
+                for y_pred in y_predlist:
+                    total += 1
+                    if y[y_pred] == 1:
+                        correct += 1
+
+        precision = correct / total
+        print("P@", i, "=", precision)
+        P.append(precision)
+        correct = 0
+        total = 0
+
+    # Number of diagnostic for each sample (mean of 12 codes, max of 30 codes, R@10 - R@20 - R@30 seems appropriate)
+    total_true_list = list()
+    for data in test_loader:
+        x, labels = data
+        outputs = model(x)
+        for y in labels :
+            total_true = 0
+            for val in y :
+                if val == 1:
+                    total_true += 1
+            total_true_list.append(total_true)
+
+    # recall
+    for i in range(10,40,10):
+        total_true_list_cpy = list(total_true_list)
+        for data in test_loader:
+            x, labels = data
+            outputs = model(x)
+            _, predicted = torch.topk(outputs.data, i)
+            for y_predlist, y in zip(predicted, labels):
+                total += total_true_list_cpy.pop(0)
+                for y_pred in y_predlist:
+                    if y[y_pred] == 1:
+                        correct += 1
+
+        recall = correct / total
+        print("R@", i, "=", recall)
+        R.append(recall)
+        correct = 0
+        total = 0
+
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
