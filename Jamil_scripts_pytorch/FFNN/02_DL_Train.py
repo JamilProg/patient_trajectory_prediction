@@ -16,34 +16,22 @@ class Network(nn.Module):
         super().__init__()
 
         # Inputs to hidden layer linear transformation
-        ARGS.inputdim = ARGS.numberOfInputCUIInts + ARGS.numberOfInputCCSInts
-        # self.hidden = nn.Linear(ARGS.inputdim, ARGS.inputdim)
+        # ARGS.inputdim = ARGS.numberOfInputCUIInts + ARGS.numberOfInputCCSInts
+        ARGS.inputdim = ARGS.numberOfInputCUIInts
         self.hidden = nn.Linear(ARGS.inputdim, 8192)
-        # Hidden to hidden layer
-        # self.hidden2 = nn.Linear(ARGS.inputdim, 8192)
+        # Hidden layer
         self.hidden2 = nn.Linear(8192, ARGS.numberOfOutputCodes)
-        # Hidden to hidden layer
-        # self.hidden3 = nn.Linear(8192, 2048)
-        # Hidden to output layer
-        # self.output = nn.Linear(2048, ARGS.numberOfOutputCodes)
 
         # Define sigmoid activation and softmax output
         # self.sigmoid = nn.Sigmoid()
         self.relu = nn.ReLU()
-        self.softmax = nn.Softmax(dim=1)
+        # self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x):
         # Pass the input tensor through each of our operations
         x = self.hidden(x)
-        # x = self.sigmoid(x)
         x = self.relu(x)
         x = self.hidden2(x)
-        # x = self.sigmoid(x)
-        x = self.relu(x)
-        # x = self.hidden3(x)
-        # x = self.sigmoid(x)
-        # x = self.output(x)
-        # x = self.softmax(x)
         return x
 
 
@@ -107,7 +95,8 @@ def load_tensors():
                 one_hot_CUI[cuitoint[cui_int]] = 1
             for ccs_int in adm[3]:
                 one_hot_CCS[ccstoint[ccs_int]] = 1
-            one_hot_X = one_hot_CUI + one_hot_CCS
+            # one_hot_X = one_hot_CUI + one_hot_CCS
+            one_hot_X = one_hot_CUI
             vectors_trainListX.append(one_hot_X)
             if i != 0:
                 # Add every admission diagnoses in Y but the first one's diagnoses
@@ -149,16 +138,16 @@ def train():
     X_train, X_test, Y_train, Y_test = load_tensors()
     print("Available GPU :", torch.cuda.is_available())
     model = Network()
-    # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    # model.to(device)
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    model.to(device)
     # Hyperparameters :
     epochs = ARGS.nEpochs
     batchsize = ARGS.batchSize
     learning_rate = 0.01
     log_interval = 2
-    # criterion = nn.BCEWithLogitsLoss()
+    criterion = nn.BCEWithLogitsLoss()
     # criterion = nn.BCELoss()
-    criterion = nn.CrossEntropyLoss()
+    # criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(model.parameters(), lr=learning_rate)
 
     # Data loader
@@ -180,12 +169,12 @@ def train():
     # run the main training loop
     for epoch in range(epochs):
         for batch_idx, (data, target) in enumerate(train_loader):
-            data, target = Variable(data), Variable(target)
-            #data, target = Variable(data).to(device), Variable(target).to(device)
+            #data, target = Variable(data), Variable(target)
+            data, target = Variable(data).to(device), Variable(target).to(device)
             optimizer.zero_grad()
             net_out = model(data)
-            # loss = criterion(net_out, target)
-            loss = criterion(net_out, torch.max(target,1)[1])
+            loss = criterion(net_out, target)
+            # loss = criterion(net_out, torch.max(target,1)[1])
             loss.backward()
             optimizer.step()
             if batch_idx % log_interval == 0:
@@ -205,7 +194,7 @@ def parse_arguments():
 	# parser.add_argument('--maxConsecutiveNonImprovements', type=int, default=10, help='Training will run until reaching the maximum number of epochs without improvement before stopping the training')
 	# parser.add_argument('--hiddenDimSize', type=str, default='[270]', help='Number of layers and their size - for example [100,200] refers to two layers with 100 and 200 nodes.')
 	parser.add_argument('--batchSize', type=int, default=100, help='Batch size.')
-	parser.add_argument('--nEpochs', type=int, default=1000, help='Number of training iterations.')
+	parser.add_argument('--nEpochs', type=int, default=600, help='Number of training iterations.')
 	# parser.add_argument('--LregularizationAlpha', type=float, default=0.001, help='Alpha regularization for L2 normalization')
 	# parser.add_argument('--dropoutRate', type=float, default=0.5, help='Dropout probability.')
 

@@ -12,66 +12,26 @@ import numpy as np
 from tqdm import tqdm_notebook as tqdm
 
 
-# class Network(nn.Module):
-#     def __init__(self):
-#         super().__init__()
-#
-#         # Inputs to hidden layer linear transformation
-#         self.hidden = nn.Linear(ARGS.inputdim, ARGS.inputdim)
-#         # Hidden to hidden layer
-#         self.hidden2 = nn.Linear(ARGS.inputdim, 8192)
-#         # Hidden to hidden layer
-#         self.hidden3 = nn.Linear(8192, 2048)
-#         # Hidden to output layer
-#         self.output = nn.Linear(2048, ARGS.numberOfOutputCodes)
-#
-#         # Define sigmoid activation and softmax output
-#         self.sigmoid = nn.Sigmoid()
-#         self.softmax = nn.Softmax(dim=1)
-#
-#     def forward(self, x):
-#         # Pass the input tensor through each of our operations
-#         x = self.hidden(x)
-#         x = self.sigmoid(x)
-#         x = self.hidden2(x)
-#         x = self.sigmoid(x)
-#         x = self.hidden3(x)
-#         x = self.sigmoid(x)
-#         x = self.output(x)
-#         x = self.softmax(x)
-#         return x
-
 class Network(nn.Module):
     def __init__(self):
         super().__init__()
 
-        # self.hidden = nn.Linear(ARGS.inputdim, ARGS.inputdim)
-        self.hidden = nn.Linear(ARGS.inputdim, 8192)
-        # Hidden to hidden layer
-        # self.hidden2 = nn.Linear(ARGS.inputdim, 8192)
-        self.hidden2 = nn.Linear(8192, ARGS.numberOfOutputCodes)
-        # Hidden to hidden layer
-        # self.hidden3 = nn.Linear(8192, 2048)
-        # Hidden to output layer
-        # self.output = nn.Linear(2048, ARGS.numberOfOutputCodes)
-
+        # Inputs to hidden layer linear transformation
+        # Hidden layer
+        # self.hidden = nn.Linear(ARGS.inputdim, 8192)
+        # self.hidden2 = nn.Linear(8192, ARGS.numberOfOutputCodes)
+        self.hidden = nn.Linear(ARGS.inputdim, 10000)
+        self.hidden2 = nn.Linear(10000, ARGS.numberOfOutputCodes)
         # Define sigmoid activation and softmax output
         # self.sigmoid = nn.Sigmoid()
         self.relu = nn.ReLU()
-        self.softmax = nn.Softmax(dim=1)
+        # self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x):
         # Pass the input tensor through each of our operations
         x = self.hidden(x)
-        # x = self.sigmoid(x)
         x = self.relu(x)
         x = self.hidden2(x)
-        # x = self.sigmoid(x)
-        x = self.relu(x)
-        # x = self.hidden3(x)
-        # x = self.sigmoid(x)
-        # x = self.output(x)
-        # x = self.softmax(x)
         return x
 
 
@@ -98,7 +58,7 @@ def test():
 
     # Load the model
     model = Network()
-    model.load_state_dict(torch.load(ARGS.inputModel))
+    model.load_state_dict(torch.load(ARGS.inputModel, map_location=torch.device('cpu')))
     # for param_tensor in model.state_dict():
     #     print(param_tensor, "\t", model.state_dict()[param_tensor].size())
     total = 0

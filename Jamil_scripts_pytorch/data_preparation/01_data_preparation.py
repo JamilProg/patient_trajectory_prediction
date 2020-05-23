@@ -230,7 +230,44 @@ if __name__ == '__main__':
 	print('-Number of admissions after cleaning: ' + str(len(hadmToCUINotes_Map)))
 	print('-Number of subjects after cleaning: ' + str(len(subjectTOhadms_Map)))
 
-	# Step 4 : ordering admissions by admittime for each patient
+	# Step 4 : get ICDs from the Diagnoses file given admission ID
+	hadmToICD9CODEs_Map = {}
+
+	if len(ARGS.diagnoses_file) > 0:
+		# one line in the diagnoses file contains only one diagnose code (ICD9) for one admission hadm_id
+		print('Building Map: hadm_id to set of ICD9 codes from DIAGNOSES_ICD')
+		# get_ICD9s_from_mimic_file(ARGS.diagnoses_file, hadmToICD9CODEs_Map)
+		hadmToICD9CODEs_Map = get_ICD9s_from_mimic_file(ARGS.diagnoses_file, hadmToICD9CODEs_Map)
+
+	print('-Number of valid admissions (at least one diagnosis): ' + str(len(hadmToICD9CODEs_Map)))
+
+    # Cleaning up inconsistencies
+    # some tuples in the diagnoses table have ICD9 empty; we clear the admissions without diagnoses from all the maps
+    # this may cause the presence of patients (subject_ids) with 0 admissions hadm_id; we clear these guys too
+    # We also clean admissions in which admission time < discharge time - there are 89 records like that in the original dataset
+	number_of_admissions_without_diagnosis = 0
+	number_of_subjects_without_valid_admissions = 0
+	print('Cleaning up admissions without diagnoses')
+	subjects_without_admission = []
+	for subject_id, hadmList in subjectTOhadms_Map.items():  # hadmTOadmttime_Map,subjectTOhadms_Map,hadm_cid9s_Map
+		hadmListCopy = list(hadmList)  # copy the list, iterate over the copy, edit the original; otherwise, iteration problems
+		for admission in hadmListCopy:
+			if admission not in hadmToICD9CODEs_Map.keys():  # map hadmToICD9CODEs_Map is already valid by creation
+				number_of_admissions_without_diagnosis += 1
+				del hadmTOadmttime_Map[admission]  # delete by key
+				hadmList.remove(admission)
+			if len(hadmList) == 0:  # toss off subject_id without admissions
+				number_of_subjects_without_valid_admissions += 1
+				subjects_without_admission.append(subject_id)
+	for subject in subjects_without_admission:
+		del subjectTOhadms_Map[subject] # delete by value
+
+	print('-Number of admissions without diagnosis: ' + str(number_of_admissions_without_diagnosis))
+	print('-Number of admissions after cleaning: ' + str(len(hadmToICD9CODEs_Map)))
+	print('-Number of subjects without admissions: ' + str(number_of_subjects_without_valid_admissions))
+	print('-Number of subjects after cleaning: ' + str(len(subjectTOhadms_Map)))
+
+	# Step 5 : ordering admissions by admittime for each patient
 	# We sort the admissions (hadm_id) according to the admission time (admittime)
 	# After this, we have a list subjectTOorderedHADM_IDS_Map(subject_id) -> admission-time-ordered set of notes
 	print('Building Map: subject_id to admission-ordered (admittime, Note) and cleaning one-admission-only patients')
@@ -255,7 +292,7 @@ if __name__ == '__main__':
 	subjectTOorderedHADM_IDS_Map = subjectTOhadms_Map
 	print('-Number of subjects after ordering: ' + str(len(subjectTOorderedHADM_IDS_Map)))
 
-	# Step 5 : CUIs to integer IDs
+	# Step 6 : CUIs to integer IDs
 	CUI_ordered_internalCodesMap = {}
 	for i, key in enumerate(CUI_set):
 		CUI_ordered_internalCodesMap[key] = i
@@ -269,44 +306,6 @@ if __name__ == '__main__':
 			codes_list = admission[2]
 			for i in range(len(codes_list)):
 				codes_list[i] = CUI_ordered_internalCodesMap[codes_list[i]]  # alter the code number to an internal sequential list
-
-
-	# Step 6 : get ICDs from the Diagnoses file given admission ID
-	hadmToICD9CODEs_Map = {}
-
-	if len(ARGS.diagnoses_file) > 0:
-		# one line in the diagnoses file contains only one diagnose code (ICD9) for one admission hadm_id
-		print('Building Map: hadm_id to set of ICD9 codes from DIAGNOSES_ICD')
-		# get_ICD9s_from_mimic_file(ARGS.diagnoses_file, hadmToICD9CODEs_Map)
-		hadmToICD9CODEs_Map = get_ICD9s_from_mimic_file(ARGS.diagnoses_file, hadmToICD9CODEs_Map)
-
-	print('-Number of valid admissions (at least one diagnosis): ' + str(len(hadmToICD9CODEs_Map)))
-
-    # Cleaning up inconsistencies
-    # some tuples in the diagnoses table have ICD9 empty; we clear the admissions without diagnoses from all the maps
-    # this may cause the presence of patients (subject_ids) with 0 admissions hadm_id; we clear these guys too
-    # We also clean admissions in which admission time < discharge time - there are 89 records like that in the original dataset
-	number_of_admissions_without_diagnosis = 0
-	number_of_subjects_without_valid_admissions = 0
-	print('Cleaning up admissions without diagnoses')
-	subjects_without_admission = []
-	for subject_id, hadmList in subjectTOhadms_Map.items():  # hadmTOadmttime_Map,subjectTOhadms_Map,hadm_cid9s_Map
-		hadmListCopy = list(hadmList)  # copy the list, iterate over the copy, edit the original; otherwise, iteration problems
-		for admission in hadmListCopy:
-			if admission[0] not in hadmToICD9CODEs_Map.keys():  # map hadmToICD9CODEs_Map is already valid by creation
-				number_of_admissions_without_diagnosis += 1
-				del hadmTOadmttime_Map[admission[0]]  # delete by key
-				hadmList.remove(admission)
-			if len(hadmList) == 0:  # toss off subject_id without admissions
-				number_of_subjects_without_valid_admissions += 1
-				subjects_without_admission.append(subject_id)
-	for subject in subjects_without_admission:
-		del subjectTOhadms_Map[subject] # delete by value
-
-	print('-Number of admissions without diagnosis: ' + str(number_of_admissions_without_diagnosis))
-	print('-Number of admissions after cleaning: ' + str(len(hadmToICD9CODEs_Map)))
-	print('-Number of subjects without admissions: ' + str(number_of_subjects_without_valid_admissions))
-	print('-Number of subjects after cleaning: ' + str(len(subjectTOhadms_Map)))
 
 	# Step 7 : convert them to CCS code to reduce granularities and add them to subjectTOorderedHADM_IDS_Map
 	# Get CCS codes
