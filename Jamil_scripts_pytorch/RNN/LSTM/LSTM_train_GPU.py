@@ -9,35 +9,37 @@ import torch.optim as optim
 import torch.utils.data as dt
 from torch.autograd import Variable
 import numpy as np
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 
 
 class Network(nn.Module):
     def __init__(self):
         super().__init__()
 
-        # Inputs to hidden layer linear transformation
         ARGS.inputdim = ARGS.numberOfInputCUIInts + ARGS.numberOfInputCCSInts
-        # ARGS.inputdim = ARGS.numberOfInputCUIInts
-        self.hidden = nn.Linear(ARGS.inputdim, ARGS.hiddenDimSize)
-        self.hidden2 = nn.Linear(ARGS.hiddenDimSize, ARGS.numberOfOutputCodes)
+        self.num_classes = ARGS.numberOfInputCCSInts
+        self.num_layers = ARGS.numLayers
+        self.hidden_size = ARGS.hiddenDimSize
+        self.lstm = nn.LSTM(input_size=ARGS.inputdim, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True, dropout=ARGS.dropOut)
+        self.fc = nn.Linear(self.hidden_size, self.num_classes)
 
-        # Define sigmoid activation and softmax output
-        # self.sigmoid = nn.Sigmoid()
-        self.relu = nn.ReLU()
-        
-        # DropOut
-        self.dropout = nn.Dropout(p=ARGS.dropOut)
+    def forward(self, x, hidden):
+        # Prop input through LSTM
+        bs = x.size(0)
+        lstm_out, hidden = self.lstm(x, hidden)
+        lstm_out = lstm_out.contiguous().view(bs,-1, self.hidden_size)
+        out = self.fc(lstm_out)
+        # out = out.view(ARGS.batchSize, -1)
+        # out = out[:,-1]
+        return out, hidden
 
-    def forward(self, x):
-        # Pass the input tensor through each of our operations
-        x = self.hidden(x)
-        x = self.relu(x)
-        x = self.dropout(x)
-        x = self.hidden2(x)
-        return x
+    def init_hidden(self):
+        # weight = next(self.parameters()).data
+        # hidden = (weight.new(self.num_layers, ARGS.batchSize, self.hidden_size).zero_(),weight.new(self.num_layers, ARGS.batchSize, self.hidden_size).zero_())
+        h_0 = torch.randn(self.num_layers, ARGS.batchSize, self.hidden_size).cuda()
+        c_0 = torch.randn(self.num_layers, ARGS.batchSize, self.hidden_size).cuda()
+        hidden = (Variable(h_0), Variable(c_0))
+        # hidden = (torch.randn(self.num_layers, ARGS.batchSize, self.hidden_size),torch.randn(self.num_layers, ARGS.batchSize, self.hidden_size))
+        return hidden
 
 
 class my_dataset(dt.Dataset):
@@ -51,8 +53,8 @@ class my_dataset(dt.Dataset):
 
 
 def load_tensors():
-    #-----------------------------------------
-    # pickle input map - each entry is a pair (subject_id, [(hadm_id,admittime, [CUIsvector], [CCSsvector])]
+	#-----------------------------------------
+	# pickle input map - each entry is a pair (subject_id, [(hadm_id,admittime, [CUIsvector], [CCSsvector])]
     # notesVectors_trainMapX = pickle.load(open(ARGS.inputFileNotes, 'rb'))
     subjecttoadm_map = pickle.load(open(ARGS.inputdata, 'rb'))
     setOfDistinctCUIs = set()
@@ -84,7 +86,12 @@ def load_tensors():
     vectors_trainListX = []
     diagnoses_trainListY = []
     # hadm_id_List = []
+    maxSeqLength = 0
     for pID, adList in subjecttoadm_map.items():
+        sequence_X = []
+        sequence_Y = []
+        if len(adList)-1 > maxSeqLength:
+            maxSeqLength = len(adList)-1
         for i, adm in enumerate(adList):
             # hadm_id_List.append(adm[0])
             if i+1 == len(adList):
@@ -92,7 +99,8 @@ def load_tensors():
                 one_hot_CCS = [0] * ARGS.numberOfInputCCSInts
                 for ccs_int in adm[3]:
                     one_hot_CCS[ccstoint[ccs_int]] = 1
-                diagnoses_trainListY.append(one_hot_CCS)
+                # diagnoses_trainListY.append(one_hot_CCS)
+                sequence_Y.append(one_hot_CCS)
                 continue
             one_hot_CUI = [0] * ARGS.numberOfInputCUIInts
             one_hot_CCS = [0] * ARGS.numberOfInputCCSInts
@@ -101,19 +109,36 @@ def load_tensors():
             for ccs_int in adm[3]:
                 one_hot_CCS[ccstoint[ccs_int]] = 1
             one_hot_X = one_hot_CUI + one_hot_CCS
-            # one_hot_X = one_hot_CUI
-            vectors_trainListX.append(one_hot_X)
+            # vectors_trainListX.append(one_hot_X)
+            # sequence_X.append(one_hot_CUI)
+            sequence_X.append(one_hot_X)
             if i != 0:
                 # Add every admission diagnoses in Y but the first one's diagnoses
-                diagnoses_trainListY.append(one_hot_CCS)
+                # diagnoses_trainListY.append(one_hot_CCS)
+                sequence_Y.append(one_hot_CCS)
+        vectors_trainListX.append(sequence_X)
+        diagnoses_trainListY.append(sequence_Y)
+
+    # Padding : make sure that each sample sequence has the same length (maxSeqLength)
+    # X case
+    # null_value = np.repeat(0, ARGS.numberOfInputCUIInts)
+    null_value = np.repeat(0, ARGS.numberOfInputCUIInts+ARGS.numberOfInputCCSInts)
+    for adlist in vectors_trainListX:
+        for i in range(maxSeqLength - len(adlist)):
+            adlist.append(null_value)
+    # Y case
+    null_value = np.repeat(0, ARGS.numberOfInputCCSInts)
+    for adlist in diagnoses_trainListY:
+        for i in range(maxSeqLength - len(adlist)):
+            adlist.append(null_value)
 
     # Randomize in dimension 0 (patients order) keeping the notes and diagnoses in sync
-    # Comment the three following lines if you want to perform statistical significance test
-    # mapIndexPosition = list(zip(vectors_trainListX, diagnoses_trainListY))
-    # random.shuffle(mapIndexPosition)
-    # vectors_trainListX, diagnoses_trainListY = zip(*mapIndexPosition)
+    # vectors_trainListX, diagnoses_trainListY, hadm_id_List = shuffle(notesVectors_trainListX, diagnoses_trainListY, hadm_id_List)
+    mapIndexPosition = list(zip(vectors_trainListX, diagnoses_trainListY))
+    random.shuffle(mapIndexPosition)
+    vectors_trainListX, diagnoses_trainListY = zip(*mapIndexPosition)
 
-    # Create train and test sets for notes
+    # Create train and test sets for each note
     sizedata = len(vectors_trainListX)
     vectors_testListX = vectors_trainListX[int(math.ceil(0.9*sizedata)):sizedata]
     vectors_trainListX = vectors_trainListX[0:int(math.ceil(0.9*sizedata))]
@@ -135,14 +160,8 @@ def load_tensors():
     # 		hadm_file.write(str(output_index)+': '+str(hadm_id_testList[i][0])+','+str(admission)+'\n')
     # 		output_index += 1
     # hadm_file.close()
-    
+
     return vectors_trainListX, vectors_testListX, diagnoses_trainListY, diagnoses_testListY
-
-
-def init_weights(m):
-    if type(m) == nn.Linear:
-        torch.nn.init.xavier_uniform(m.weight)
-        m.bias.data.fill_(0.01)
 
 
 def train():
@@ -150,9 +169,8 @@ def train():
     print("Available GPU :", torch.cuda.is_available())
     torch.cuda.set_device(1)
     model = Network().cuda()
-    # XAVIER Init
-    # model.apply(init_weights)
     with torch.cuda.device(1):
+        # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         # model.to(device)
         # Hyperparameters :
         epochs = ARGS.nEpochs
@@ -162,58 +180,48 @@ def train():
         criterion = nn.BCEWithLogitsLoss()
         # criterion = nn.BCELoss()
         # criterion = nn.CrossEntropyLoss()
-        optimizer = optim.SGD(model.parameters(), lr=learning_rate)
-        # optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-        # Data loader
-        tensor_x = torch.Tensor(np.array(X_train).tolist()).cuda() # transform to torch tensor
-        # print("X_dataset_shape=",tensor_x.shape)
-        tensor_y = torch.Tensor(np.array(Y_train).tolist()).cuda()
-        # print("Y_dataset_shape=",tensor_y.shape)
-        dataset = dt.TensorDataset(tensor_x, tensor_y) # create your dataset
-        train_size = int(len(dataset))
-        print("train_size =", train_size)
+        # optimizer = optim.SGD(model.parameters(), lr=learning_rate)
+        optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-        # train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, test_size])
+        # Data loader
+        X_train=np.array([np.array([np.array(unelist, dtype=np.uint8) for unelist in xi]) for xi in X_train])
+        Y_train=np.array([np.array([np.array(unelist, dtype=np.uint8) for unelist in xi]) for xi in Y_train])
+        tensor_x = torch.from_numpy(X_train).cuda() # transform to torch tensor
+        print("X_dataset_shape=",tensor_x.shape)
+        tensor_y = torch.from_numpy(Y_train).cuda()
+        print("Y_dataset_shape=",tensor_y.shape)
+        dataset = dt.TensorDataset(tensor_x, tensor_y) # create dataset
+
+        # # train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, test_size])
 
         train_loader = dt.DataLoader(
             dataset,
             batch_size=batchsize,
             shuffle=True)
-    
+
         # run the main training loop
-        loss_values = []
         for epoch in range(epochs):
-            running_loss = 0.0
-            iteration_ctr = 0
+            h = model.init_hidden()
             for batch_idx, (data, target) in enumerate(train_loader):
-                data, target = Variable(data), Variable(target)
+                # h = tuple([Variable(e).data for e in h])
+                data, target = Variable(data.float()), Variable(target.float())
+                if data.size(0) != ARGS.batchSize:
+                    continue
                 #data, target = Variable(data).to(device), Variable(target).to(device)
+                cstate, hstate = h
+                h = (cstate.detach(), hstate.detach())
                 optimizer.zero_grad()
-                net_out = model(data)
+                net_out, h = model(data, h)
                 loss = criterion(net_out, target)
                 # loss = criterion(net_out, torch.max(target,1)[1])
+                # loss.backward(retain_graph=True)
                 loss.backward()
                 optimizer.step()
-                running_loss += loss
-                iteration_ctr += 1
                 if batch_idx % log_interval == 0:
                     print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: '.format(
                             epoch, batch_idx * len(data), len(train_loader.dataset),
-                            100. * batch_idx / len(train_loader)))
-                    # print(loss.data)
-            loss_values.append(running_loss / iteration_ctr)
-
-    # plot the curve
-    # plt.plot(loss_values)
-    # export the curve (ssh version)
-    fig = plt.figure()
-    t = np.arange(1, epochs+1, 1)
-    plt.plot(t, loss_values, 'bs')
-    plt.title('Training loss')
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
-    fig.savefig('curve_log.png')
-    
+                                   100. * batch_idx / len(train_loader)))
+                    print(loss.data)
     # saving model
     torch.save(model.state_dict(), ARGS.outFile)
 
@@ -224,12 +232,13 @@ def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('--inputdata', type=str, default='prepared_data.npz', metavar='<visit_file>')
     parser.add_argument('--outFile', metavar='out_file', default='model_output.pt', help='Any file name to store the model.')
-    # parser.add_argument('--maxConsecutiveNonImprovements', type=int, default=30, help='Training until reaching the maximum number of epochs without improvement.')
-    parser.add_argument('--hiddenDimSize', type=int, default=10000, help='Number of neurons in the hidden layer.')
-    parser.add_argument('--batchSize', type=int, default=100, help='Batch size.')
-    parser.add_argument('--nEpochs', type=int, default=10000, help='Number of training iterations.')
+    # parser.add_argument('--maxConsecutiveNonImprovements', type=int, default=10, help='Training will run until reaching the maximum number of epochs without improvement before stopping the training')
+    parser.add_argument('--hiddenDimSize', type=int, default=200, help='Size of LSTM hidden layer')
+    parser.add_argument('--numLayers', type=int, default=1, help='Number of LSTM layers')
+    parser.add_argument('--batchSize', type=int, default=10, help='Batch size.')
+    parser.add_argument('--nEpochs', type=int, default=1500, help='Number of training iterations.')
     parser.add_argument('--lr', type=float, default=0.01, help='Learning rate.')
-    parser.add_argument('--dropOut', type=float, default=0.5, help='Dropout rate.')
+    parser.add_argument('--dropOut', type=float, default=0.5, help='LSTM Dropout.')
     
     ARGStemp = parser.parse_args()
     return ARGStemp

@@ -110,8 +110,8 @@ def get_CUINotes_from_CSV_file(fileName):
 		CUInote_vector = CUInote_vector.replace('C', '')
 
 		# Here we can pick a category of interest
-		#if category != 'physician':
-		#	continue
+		if category != 'radiology':
+			continue
 
 		#collect the admission identification data, so that it is possible to match it with the diagnoses data
 		if len(CUInote_vector) < 5:
@@ -196,8 +196,6 @@ def parse_arguments():
 	parser.add_argument('--diagnoses_file', type=str, default='/home/jamilz/LIG/MIMIC III/mimic-iii-clinical-database-1.4/DIAGNOSES_ICD.csv')
 	parser.add_argument('--notes_file', type=str, default='output.csv')
 	parser.add_argument('--output_file_name', type=str, default='prepared_data')
-	parser.add_argument('--id_to_cui_filename', type=str, default='cui_dict')
-	parser.add_argument('--id_to_ccs_filename', type=str, default='ccs_dict')
 	argsTemp = parser.parse_args()
 	return argsTemp
 
@@ -347,7 +345,3 @@ if __name__ == '__main__':
 	pickle.dump(subjectTOorderedHADM_IDS_Map, open(ARGS.output_file_name + '.npz', 'wb'), protocol = 2)
 	print('-Final number of subjects'' notes for training: ' + str(len(subjectTOorderedHADM_IDS_Map)))
 	print('-Final number of admissions for training: ' + str(final_number_of_admissions))
-
-	# We also save the dictionaries for later (for prediction / testing purposes)
-	pickle.dump(CUI_ordered_internalCodesMap, open(ARGS.id_to_cui_filename + '.npz', 'wb'), protocol = 2)
-	pickle.dump(CCS_ordered_internalCodesMap, open(ARGS.id_to_ccs_filename + '.npz', 'wb'), protocol = 2)

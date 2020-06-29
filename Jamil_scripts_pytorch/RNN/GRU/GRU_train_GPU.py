@@ -17,28 +17,22 @@ class Network(nn.Module):
 
         ARGS.inputdim = ARGS.numberOfInputCUIInts
         self.num_classes = ARGS.numberOfInputCCSInts
-        self.num_layers = 1
-        self.hidden_size = 500                   
-        
-        self.lstm = nn.LSTM(input_size=ARGS.inputdim, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True)
+        self.num_layers = ARGS.numLayers
+        self.hidden_size = ARGS.hiddenDimSize
+        self.gru = nn.GRU(input_size=ARGS.inputdim, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True, dropout=ARGS.dropOut)
         self.fc = nn.Linear(self.hidden_size, self.num_classes)
 
     def forward(self, x, hidden):
-        # Prop input through LSTM
-        lstm_out, hidden = self.lstm(x, hidden)
-        lstm_out = lstm_out.contiguous().view(ARGS.batchSize,-1, self.hidden_size)
-        out = self.fc(lstm_out)
-        # out = out.view(ARGS.batchSize, -1)
-        # out = out[:,-1]
+        # Prop input through GRU
+        bs = x.size(0)
+        rnn_out, hidden = self.gru(x, hidden)
+        rnn_out = rnn_out.contiguous().view(bs,-1, self.hidden_size)
+        out = self.fc(rnn_out)
         return out, hidden
-    
+
     def init_hidden(self):
-        # weight = next(self.parameters()).data
-        # hidden = (weight.new(self.num_layers, ARGS.batchSize, self.hidden_size).zero_(),weight.new(self.num_layers, ARGS.batchSize, self.hidden_size).zero_())
-        h_0 = torch.randn(self.num_layers, ARGS.batchSize, self.hidden_size)
-        c_0 = torch.randn(self.num_layers, ARGS.batchSize, self.hidden_size)
-        hidden = (Variable(h_0), Variable(c_0))
-        # hidden = (torch.randn(self.num_layers, ARGS.batchSize, self.hidden_size),torch.randn(self.num_layers, ARGS.batchSize, self.hidden_size))
+        h_0 = torch.randn(self.num_layers, ARGS.batchSize, self.hidden_size).cuda()
+        hidden = Variable(h_0)
         return hidden
 
 
@@ -63,8 +57,6 @@ def load_tensors():
     ccstoint = dict()
     for subject in subjecttoadm_map.keys():
         patientData = subjecttoadm_map[subject]
-        if len(patientData) < 2 :
-            print("BADNESS", len(patientData))
         for ithAdmis in patientData:
             for CUIcode in ithAdmis[2]:
                 setOfDistinctCUIs.add(CUIcode)
@@ -119,7 +111,7 @@ def load_tensors():
                 sequence_Y.append(one_hot_CCS)
         vectors_trainListX.append(sequence_X)
         diagnoses_trainListY.append(sequence_Y)
-    
+
     # Padding : make sure that each sample sequence has the same length (maxSeqLength)
     # X case
     null_value = np.repeat(0, ARGS.numberOfInputCUIInts)
@@ -167,55 +159,57 @@ def load_tensors():
 def train():
     X_train, X_test, Y_train, Y_test = load_tensors()
     print("Available GPU :", torch.cuda.is_available())
-    model = Network()
-    # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    # model.to(device)
-    # Hyperparameters :
-    epochs = ARGS.nEpochs
-    batchsize = ARGS.batchSize
-    learning_rate = 0.01
-    log_interval = 2
-    criterion = nn.BCEWithLogitsLoss()
-    # criterion = nn.BCELoss()
-    # criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(model.parameters(), lr=learning_rate)
+    model = Network().cuda()
+    with torch.cuda.device(0):
+        # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        # model.to(device)
+        # Hyperparameters :
+        epochs = ARGS.nEpochs
+        batchsize = ARGS.batchSize
+        learning_rate = ARGS.lr
+        log_interval = 2
+        criterion = nn.BCEWithLogitsLoss()
+        # criterion = nn.BCELoss()
+        # criterion = nn.CrossEntropyLoss()
+        # optimizer = optim.SGD(model.parameters(), lr=learning_rate)
+        optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-    # Data loader
-    X_train=np.array([np.array([np.array(unelist, dtype=np.float32) for unelist in xi]) for xi in X_train])
-    Y_train=np.array([np.array([np.array(unelist, dtype=np.float32) for unelist in xi]) for xi in Y_train])
-    tensor_x = torch.from_numpy(X_train) # transform to torch tensor
-    print("X_dataset_shape=",tensor_x.shape)
-    tensor_y = torch.from_numpy(Y_train)
-    print("Y_dataset_shape=",tensor_y.shape)
-    dataset = dt.TensorDataset(tensor_x, tensor_y) # create your dataset
-    # train_size = int(len(dataset))
-    # print("train_size =", train_size)
+        # Data loader
+        X_train=np.array([np.array([np.array(unelist, dtype=np.uint8) for unelist in xi]) for xi in X_train])
+        Y_train=np.array([np.array([np.array(unelist, dtype=np.uint8) for unelist in xi]) for xi in Y_train])
+        tensor_x = torch.from_numpy(X_train).cuda() # transform to torch tensor
+        print("X_dataset_shape=",tensor_x.shape)
+        tensor_y = torch.from_numpy(Y_train).cuda()
+        print("Y_dataset_shape=",tensor_y.shape)
+        dataset = dt.TensorDataset(tensor_x, tensor_y) # create dataset
 
-    # # train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, test_size])
+        # # train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, test_size])
 
-    train_loader = dt.DataLoader(
-        dataset,
-        batch_size=batchsize,
-        shuffle=True)
+        train_loader = dt.DataLoader(
+            dataset,
+            batch_size=batchsize,
+            shuffle=True)
 
-    # run the main training loop
-    for epoch in range(epochs):
-        h = model.init_hidden()
-        for batch_idx, (data, target) in enumerate(train_loader):
-            # h = tuple([Variable(e).data for e in h])
-            data, target = Variable(data), Variable(target)
-            #data, target = Variable(data).to(device), Variable(target).to(device)
-            optimizer.zero_grad()
-            net_out, h = model(data, h)
-            loss = criterion(net_out, target)
-            # loss = criterion(net_out, torch.max(target,1)[1])
-            loss.backward(retain_graph=True)
-            optimizer.step()
-            if batch_idx % log_interval == 0:
-                print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: '.format(
-                        epoch, batch_idx * len(data), len(train_loader.dataset),
-                               100. * batch_idx / len(train_loader)))
-                print(loss.data)
+        # run the main training loop
+        for epoch in range(epochs):
+            h = model.init_hidden()
+            for batch_idx, (data, target) in enumerate(train_loader):
+                # h = tuple([Variable(e).data for e in h])
+                data, target = Variable(data.float()), Variable(target.float())
+                if data.size(0) != ARGS.batchSize:
+                    continue
+                #data, target = Variable(data).to(device), Variable(target).to(device)
+                h = h.detach()
+                optimizer.zero_grad()
+                net_out, h = model(data, h)
+                loss = criterion(net_out, target)
+                loss.backward()
+                optimizer.step()
+                if batch_idx % log_interval == 0:
+                    print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: '.format(
+                            epoch, batch_idx * len(data), len(train_loader.dataset),
+                                   100. * batch_idx / len(train_loader)))
+                    print(loss.data)
     # saving model
     torch.save(model.state_dict(), ARGS.outFile)
 
@@ -223,20 +217,19 @@ def train():
 
 
 def parse_arguments():
-	parser = argparse.ArgumentParser()
-	parser.add_argument('--inputdata', type=str, default='prepared_data.npz', metavar='<visit_file>')
-	parser.add_argument('--outFile', metavar='out_file', default='model_output.pt', help='Any file name to store the model.')
-	# parser.add_argument('--maxConsecutiveNonImprovements', type=int, default=10, help='Training will run until reaching the maximum number of epochs without improvement before stopping the training')
-	# parser.add_argument('--hiddenDimSize', type=str, default='[270]', help='Number of layers and their size - for example [100,200] refers to two layers with 100 and 200 nodes.')
-	parser.add_argument('--batchSize', type=int, default=100, help='Batch size.')
-	parser.add_argument('--nEpochs', type=int, default=1000, help='Number of training iterations.')
-	# parser.add_argument('--LregularizationAlpha', type=float, default=0.001, help='Alpha regularization for L2 normalization')
-	# parser.add_argument('--dropoutRate', type=float, default=0.5, help='Dropout probability.')
-
-	ARGStemp = parser.parse_args()
-	# hiddenDimSize = [int(strDim) for strDim in ARGStemp.hiddenDimSize[1:-1].split(',')]
-	# ARGStemp.hiddenDimSize = hiddenDimSize
-	return ARGStemp
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--inputdata', type=str, default='prepared_data.npz', metavar='<visit_file>')
+    parser.add_argument('--outFile', metavar='out_file', default='model_output.pt', help='Any file name to store the model.')
+    # parser.add_argument('--maxConsecutiveNonImprovements', type=int, default=10, help='Training will run until reaching the maximum number of epochs without improvement before stopping the training')
+    parser.add_argument('--hiddenDimSize', type=int, default=200, help='Size of GRU hidden layer')
+    parser.add_argument('--numLayers', type=int, default=1, help='Number of GRU layers')
+    parser.add_argument('--batchSize', type=int, default=10, help='Batch size.')
+    parser.add_argument('--nEpochs', type=int, default=1500, help='Number of training iterations.')
+    parser.add_argument('--lr', type=float, default=0.01, help='Learning rate.')
+    parser.add_argument('--dropOut', type=float, default=0, help='Dropout rate.')
+    
+    ARGStemp = parser.parse_args()
+    return ARGStemp
 
 
 if __name__ == '__main__':

@@ -10,27 +10,29 @@ import torch.utils.data as dt
 from torch.autograd import Variable
 import numpy as np
 from tqdm import tqdm_notebook as tqdm
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 
 class Network(nn.Module):
     def __init__(self):
         super().__init__()
 
-        # Inputs to hidden layer linear transformation
-        # Hidden layer
-        # self.hidden = nn.Linear(ARGS.inputdim, 8192)
-        # self.hidden2 = nn.Linear(8192, ARGS.numberOfOutputCodes)
-        self.hidden = nn.Linear(ARGS.inputdim, 10000)
-        self.hidden2 = nn.Linear(10000, ARGS.numberOfOutputCodes)
+        self.hidden = nn.Linear(ARGS.inputdim, ARGS.hiddenDimSize)
+        self.hidden2 = nn.Linear(ARGS.hiddenDimSize, ARGS.numberOfOutputCodes)
         # Define sigmoid activation and softmax output
         # self.sigmoid = nn.Sigmoid()
         self.relu = nn.ReLU()
-        # self.softmax = nn.Softmax(dim=1)
+
+        # DropOut
+        self.dropout = nn.Dropout(p=ARGS.dropOut)
 
     def forward(self, x):
         # Pass the input tensor through each of our operations
         x = self.hidden(x)
         x = self.relu(x)
+        x = self.dropout(x)
         x = self.hidden2(x)
         return x
 
@@ -39,6 +41,7 @@ def test():
     # Load the test data
     X_test = pickle.load(open(ARGS.Xinputdata, 'rb'))
     Y_test = pickle.load(open(ARGS.Yinputdata, 'rb'))
+    criterion = nn.BCEWithLogitsLoss()
     ARGS.inputdim = len(X_test[0])
     ARGS.numberOfOutputCodes = len(Y_test[0])
     print("X_test of len:", len(X_test), "and Y_test of len:", len(Y_test))
@@ -54,7 +57,7 @@ def test():
     test_loader = dt.DataLoader(
         dataset,
         batch_size=batchsize,
-        shuffle=True)
+        shuffle=False)
 
     # Load the model
     model = Network()
@@ -64,6 +67,19 @@ def test():
     total = 0
     correct = 0
     model.eval()
+
+    # validation loss
+    loss_values = []
+    itr_ctr = 0
+    for batch_idx, (data, target) in enumerate(test_loader):
+        with torch.no_grad():
+            itr_ctr += 1
+            data, target = Variable(data), Variable(target)
+            net_out = model(data)
+            loss = criterion(net_out, target)
+            loss_values.append(loss)
+
+    print("Validation loss :", np.mean(loss_values))
 
     P = list()
     R = list()
@@ -123,7 +139,10 @@ def parse_arguments():
     parser.add_argument('--Xinputdata', type=str, default='X-test.data', metavar='<visit_file>')
     parser.add_argument('--Yinputdata', type=str, default='Y-test.data', metavar='<visit_file>')
     parser.add_argument('--inputModel', type=str, default='model_output.pt', metavar='<visit_file>')
-    parser.add_argument('--batchSize', type=int, default=100, help='Batch size')
+    parser.add_argument('--batchSize', type=int, default=100, help='Batch size.')
+    parser.add_argument('--hiddenDimSize', type=int, default=10000, help='Number of neurons in hidden layer.')
+    parser.add_argument('--dropOut', type=float, default=0.5, help='Dropout rate.')
+
     ARGStemp = parser.parse_args()
     return ARGStemp
 

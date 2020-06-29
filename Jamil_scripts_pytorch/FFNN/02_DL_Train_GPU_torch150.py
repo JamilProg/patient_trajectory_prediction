@@ -9,9 +9,6 @@ import torch.optim as optim
 import torch.utils.data as dt
 from torch.autograd import Variable
 import numpy as np
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 
 
 class Network(nn.Module):
@@ -108,10 +105,10 @@ def load_tensors():
                 diagnoses_trainListY.append(one_hot_CCS)
 
     # Randomize in dimension 0 (patients order) keeping the notes and diagnoses in sync
-    # Comment the three following lines if you want to perform statistical significance test
-    # mapIndexPosition = list(zip(vectors_trainListX, diagnoses_trainListY))
-    # random.shuffle(mapIndexPosition)
-    # vectors_trainListX, diagnoses_trainListY = zip(*mapIndexPosition)
+    # vectors_trainListX, diagnoses_trainListY, hadm_id_List = shuffle(notesVectors_trainListX, diagnoses_trainListY, hadm_id_List)
+    mapIndexPosition = list(zip(vectors_trainListX, diagnoses_trainListY))
+    random.shuffle(mapIndexPosition)
+    vectors_trainListX, diagnoses_trainListY = zip(*mapIndexPosition)
 
     # Create train and test sets for notes
     sizedata = len(vectors_trainListX)
@@ -148,72 +145,57 @@ def init_weights(m):
 def train():
     X_train, X_test, Y_train, Y_test = load_tensors()
     print("Available GPU :", torch.cuda.is_available())
-    torch.cuda.set_device(1)
-    model = Network().cuda()
+    #torch.cuda.set_device(0)
+    model = Network()
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    model.to(device)
     # XAVIER Init
-    # model.apply(init_weights)
-    with torch.cuda.device(1):
-        # model.to(device)
-        # Hyperparameters :
-        epochs = ARGS.nEpochs
-        batchsize = ARGS.batchSize
-        learning_rate = ARGS.lr
-        log_interval = 2
-        criterion = nn.BCEWithLogitsLoss()
-        # criterion = nn.BCELoss()
-        # criterion = nn.CrossEntropyLoss()
-        optimizer = optim.SGD(model.parameters(), lr=learning_rate)
-        # optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-        # Data loader
-        tensor_x = torch.Tensor(np.array(X_train).tolist()).cuda() # transform to torch tensor
-        # print("X_dataset_shape=",tensor_x.shape)
-        tensor_y = torch.Tensor(np.array(Y_train).tolist()).cuda()
-        # print("Y_dataset_shape=",tensor_y.shape)
-        dataset = dt.TensorDataset(tensor_x, tensor_y) # create your dataset
-        train_size = int(len(dataset))
-        print("train_size =", train_size)
+    model.apply(init_weights)
+    # Hyperparameters :
+    epochs = ARGS.nEpochs
+    batchsize = ARGS.batchSize
+    learning_rate = ARGS.lr
+    log_interval = 2
+    # Change weights to improve recall
+    empty_weights = torch.Tensor(ARGS.numberOfOutputCodes)
+    actual_weights = empty_weights.fill_(1.2).to(device)
+    criterion = nn.BCEWithLogitsLoss(pos_weight=actual_weights)
+    # criterion = nn.BCELoss()
+    # criterion = nn.CrossEntropyLoss()
+    optimizer = optim.SGD(model.parameters(), lr=learning_rate)
+    # optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    # Data loader
+    tensor_x = torch.Tensor(np.array(X_train).tolist()) # transform to torch tensor
+    # print("X_dataset_shape=",tensor_x.shape)
+    tensor_y = torch.Tensor(np.array(Y_train).tolist())
+    # print("Y_dataset_shape=",tensor_y.shape)
+    dataset = dt.TensorDataset(tensor_x, tensor_y) # create your dataset
+    train_size = int(len(dataset))
+    print("train_size =", train_size)
 
-        # train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, test_size])
+    # train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, test_size])
 
-        train_loader = dt.DataLoader(
-            dataset,
-            batch_size=batchsize,
-            shuffle=True)
+    train_loader = dt.DataLoader(
+        dataset,
+        batch_size=batchsize,
+        shuffle=True)
     
-        # run the main training loop
-        loss_values = []
-        for epoch in range(epochs):
-            running_loss = 0.0
-            iteration_ctr = 0
-            for batch_idx, (data, target) in enumerate(train_loader):
-                data, target = Variable(data), Variable(target)
-                #data, target = Variable(data).to(device), Variable(target).to(device)
-                optimizer.zero_grad()
-                net_out = model(data)
-                loss = criterion(net_out, target)
-                # loss = criterion(net_out, torch.max(target,1)[1])
-                loss.backward()
-                optimizer.step()
-                running_loss += loss
-                iteration_ctr += 1
-                if batch_idx % log_interval == 0:
-                    print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: '.format(
-                            epoch, batch_idx * len(data), len(train_loader.dataset),
-                            100. * batch_idx / len(train_loader)))
-                    # print(loss.data)
-            loss_values.append(running_loss / iteration_ctr)
-
-    # plot the curve
-    # plt.plot(loss_values)
-    # export the curve (ssh version)
-    fig = plt.figure()
-    t = np.arange(1, epochs+1, 1)
-    plt.plot(t, loss_values, 'bs')
-    plt.title('Training loss')
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
-    fig.savefig('curve_log.png')
-    
+    # run the main training loop
+    for epoch in range(epochs):
+        for batch_idx, (data, target) in enumerate(train_loader):
+            # data, target = Variable(data), Variable(target)
+            data, target = Variable(data).to(device), Variable(target).to(device)
+            optimizer.zero_grad()
+            net_out = model(data)
+            loss = criterion(net_out, target)
+            # loss = criterion(net_out, torch.max(target,1)[1])
+            loss.backward()
+            optimizer.step()
+            if batch_idx % log_interval == 0:
+                print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: '.format(
+                        epoch, batch_idx * len(data), len(train_loader.dataset),
+                        100. * batch_idx / len(train_loader)))
+                print(loss.data)
     # saving model
     torch.save(model.state_dict(), ARGS.outFile)
 
@@ -227,7 +209,7 @@ def parse_arguments():
     # parser.add_argument('--maxConsecutiveNonImprovements', type=int, default=30, help='Training until reaching the maximum number of epochs without improvement.')
     parser.add_argument('--hiddenDimSize', type=int, default=10000, help='Number of neurons in the hidden layer.')
     parser.add_argument('--batchSize', type=int, default=100, help='Batch size.')
-    parser.add_argument('--nEpochs', type=int, default=10000, help='Number of training iterations.')
+    parser.add_argument('--nEpochs', type=int, default=5000, help='Number of training iterations.')
     parser.add_argument('--lr', type=float, default=0.01, help='Learning rate.')
     parser.add_argument('--dropOut', type=float, default=0.5, help='Dropout rate.')
     
