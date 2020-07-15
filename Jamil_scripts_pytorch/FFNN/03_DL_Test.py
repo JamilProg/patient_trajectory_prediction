@@ -10,6 +10,7 @@ import torch.utils.data as dt
 from torch.autograd import Variable
 import numpy as np
 from tqdm import tqdm_notebook as tqdm
+from sklearn.metrics import roc_auc_score as roc
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -114,7 +115,7 @@ def test():
                     total_true += 1
             total_true_list.append(total_true)
 
-    # recall
+    # Recalls
     for i in range(10,40,10):
         total_true_list_cpy = list(total_true_list)
         for data in test_loader:
@@ -132,6 +133,24 @@ def test():
         R.append(recall)
         correct = 0
         total = 0
+
+    # AUC score
+    AUC_list = list()
+    YTRUE = None
+    YPROBA = None
+    for data in test_loader:
+        x, labels = data
+        x, labels = Variable(x), Variable(labels)
+        outputs = model(x).detach().numpy()
+        labels = labels.detach().numpy()
+        # roc_score=roc(labels, outputs, average='micro', multi_class='ovr')
+        # AUC_list.append(roc_score)
+        for batch_true, batch_prob in zip(labels, outputs):
+            YTRUE = np.concatenate((YTRUE, [batch_true]), axis=0) if YTRUE is not None else [batch_true]
+            YPROBA = np.concatenate((YPROBA, [batch_prob]), axis=0) if YPROBA is not None else [batch_prob]
+    # ROC_avg_score=sum(AUC_list)/len(AUC_list)
+    ROC_avg_score=roc(YTRUE, YPROBA, average='micro', multi_class='ovr')
+    print("ROC Average Score:", ROC_avg_score)
 
 
 def parse_arguments():

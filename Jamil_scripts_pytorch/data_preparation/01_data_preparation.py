@@ -110,8 +110,8 @@ def get_CUINotes_from_CSV_file(fileName):
 		CUInote_vector = CUInote_vector.replace('C', '')
 
 		# Here we can pick a category of interest
-		if category != 'radiology':
-			continue
+		#if category != 'radiology':
+		#	continue
 
 		#collect the admission identification data, so that it is possible to match it with the diagnoses data
 		if len(CUInote_vector) < 5:
@@ -136,7 +136,7 @@ def get_CUINotes_from_CSV_file(fileName):
 
 def split_and_convertToInt(aListOfCUINotes):
 	""" Split vector of CUIs and convert them to int (in a set to avoid duplicate) """
-	# One admission has many CUINotes (each a string of ints), we "agregate" them by creating a set of CUIs with set union
+	# One admission has many CUINotes (each a string of ints), we "aggregate" them by creating a set of CUIs with set union
 	set_of_CUIcodes = set()
 	for CUINotes in aListOfCUINotes:
 		tokens = CUINotes.strip().split(' ')
@@ -144,7 +144,7 @@ def split_and_convertToInt(aListOfCUINotes):
 			if value == '"':
 				print('no')
 			set_of_CUIcodes.add(int(value))
-			CUI_set.add(int(value)) # Add the CUI in the set of ALL possible CUIs in the file
+			CUI_set.add(int(value))  # Add the CUI in the set of ALL possible CUIs in the file
 	return list(set_of_CUIcodes)
 
 

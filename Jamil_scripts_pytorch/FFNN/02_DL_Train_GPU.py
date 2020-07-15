@@ -19,8 +19,8 @@ class Network(nn.Module):
         super().__init__()
 
         # Inputs to hidden layer linear transformation
-        ARGS.inputdim = ARGS.numberOfInputCUIInts + ARGS.numberOfInputCCSInts
-        # ARGS.inputdim = ARGS.numberOfInputCUIInts
+        # ARGS.inputdim = ARGS.numberOfInputCUIInts + ARGS.numberOfInputCCSInts
+        ARGS.inputdim = ARGS.numberOfInputCUIInts
         self.hidden = nn.Linear(ARGS.inputdim, ARGS.hiddenDimSize)
         self.hidden2 = nn.Linear(ARGS.hiddenDimSize, ARGS.numberOfOutputCodes)
 
@@ -100,8 +100,8 @@ def load_tensors():
                 one_hot_CUI[cuitoint[cui_int]] = 1
             for ccs_int in adm[3]:
                 one_hot_CCS[ccstoint[ccs_int]] = 1
-            one_hot_X = one_hot_CUI + one_hot_CCS
-            # one_hot_X = one_hot_CUI
+            # one_hot_X = one_hot_CUI + one_hot_CCS
+            one_hot_X = one_hot_CUI
             vectors_trainListX.append(one_hot_X)
             if i != 0:
                 # Add every admission diagnoses in Y but the first one's diagnoses
@@ -227,7 +227,7 @@ def parse_arguments():
     # parser.add_argument('--maxConsecutiveNonImprovements', type=int, default=30, help='Training until reaching the maximum number of epochs without improvement.')
     parser.add_argument('--hiddenDimSize', type=int, default=10000, help='Number of neurons in the hidden layer.')
     parser.add_argument('--batchSize', type=int, default=100, help='Batch size.')
-    parser.add_argument('--nEpochs', type=int, default=10000, help='Number of training iterations.')
+    parser.add_argument('--nEpochs', type=int, default=5000, help='Number of training iterations.')
     parser.add_argument('--lr', type=float, default=0.01, help='Learning rate.')
     parser.add_argument('--dropOut', type=float, default=0.5, help='Dropout rate.')
     
