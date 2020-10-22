@@ -3,9 +3,9 @@ All of these scripts were ran with Python3.
 # Step 1 : Cleaning data from MIMIC III's NoteEvents.csv (data cleaning)
 1.0 Move to data_cleaning folder.
 
-1.1 Run noteEvents_preproc.py (with MIMIC III's NOTEEVENTS.csv as input) - this process takes about 4 hours to finish, and generates a preprocessed text (output.csv).
+1.1 Run noteEvents_preproc.py (with MIMIC III's NOTEEVENTS.csv as input) - it takes about 4 hours to finish, and generates a preprocessed text (output.csv).
 
-1.2 Run MIMIC_smart_splitter.py (with output.csv as input) : splits the preprocessed text into files of 50 Mb without cutting any note.
+1.2 Run MIMIC_smart_splitter.py (with output.csv as input) : splits the preprocessed text into files of 50 Mb without cutting any note - it should take about 1 hour.
 
 1.3 At this step, we have a new folder called "data" which contains two folders. The first one (chunkssmall) contains all files and the other one is empty.
 
