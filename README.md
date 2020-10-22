@@ -9,7 +9,7 @@ All of these scripts were ran with Python3.
 
 1.3 At this step, we have a new folder called "data" which contains two folders. The first one (chunkssmall) contains all files and the other one is empty.
 
-# Step 2.A : CUI Recognizer with QuickUMLS 
+# Step 2 : CUI Recognizer with QuickUMLS 
 
 2.1 Install QuickUMLS, see : https://github.com/Georgetown-IR-Lab/QuickUMLS - at the end, you should have a QuickUMLS folder.
 
