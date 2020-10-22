@@ -1,8 +1,8 @@
 #!/usr/bin/python
 import re
 import matplotlib.pyplot as plt
+import nltk
 from nltk.tokenize import word_tokenize
-# import csv
 
 
 # Dico for references
@@ -15,15 +15,7 @@ tens = {"2": "twenty", "3": "thirty", "4": "fourty", "5": "fifty",
 grand = {0: " billion ", 1: " million ", 2: " thousand ", 3: ""}
 
 
-# def get_sectionlist(section_list_file):
-#     """ Get a section list and return the given list """
-#     section_list = []
-#     with open(section_list_file, 'r') as file:
-#         reader = csv.reader(file)
-#         for row in reader:
-#             if row[2] not in section_list:
-#                 section_list.append(row[2])
-#     return section_list
+nltk.download('punkt')
 
 
 def get_next_line_without_moving(f):
@@ -37,7 +29,7 @@ def get_next_line_without_moving(f):
 def get_vocabulary(inputfile):
     """ This procedure takes a MIMIC NoteEvents file and returns a dictionary
     which contains words and their corresponding count """
-    # Ignore first line
+    # Ignore first line (columns title)
     # If comma in the line, ignore it as it is NOT text
     # Otherwise, take the line, and foreach word in line, if word in dict.keys(), count++, otherwise new words
     word_dict = dict()
@@ -61,7 +53,6 @@ def get_vocabulary(inputfile):
 
 
 def show_histogram(distribution, n_bins, title):
-    # matplotlib.use("TkAgg")
     plt.style.use('ggplot')
     plt.title(title)
     plt.hist(distribution, bins=n_bins)
@@ -139,5 +130,4 @@ def num_to_words(value):
             result = result + three_dig_to_words(val) + grand[key]
 
     result = re.sub(r'(^ *| *$)', ' ', result)
-    # print(result)
     return result

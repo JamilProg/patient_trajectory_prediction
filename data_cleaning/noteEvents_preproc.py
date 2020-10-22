@@ -1,11 +1,9 @@
 #!/usr/bin/python
 import sys
-# import re
-# from nltk.tokenize import word_tokenize
+import os
 from utils_preproc import *
 
 
-# AFTER DOCTOR QUOTES, BEFORE EVERYTHING ELSE
 def shape_to_csv(inputfile, outputfile):
     """ Ensures that we have a CSV shape : we separate the text columns from
     the others columns with breaklines in the right places """
@@ -407,38 +405,43 @@ def main():
     if len(sys.argv) != 2:
         print("One argument is necessary : the path to the NOTEEVENTS.csv file")
         return -1
-    anonimization_remover(sys.argv[1], 'out_results/out_noanonim.csv')
-    doctor_quotes_remover('out_results/out_noanonim.csv', 'out_results/out_nodocquotes.csv')
-    shape_to_csv('out_results/out_nodocquotes.csv', 'out_results/out_csvshape.csv')
-    remove_extra_commas('out_results/out_csvshape.csv', 'out_results/out_noextracommas.csv')
-    lower_all_text('out_results/out_noextracommas.csv', 'out_results/out_lower.csv')
-    clean_useless_words('out_results/out_lower.csv', 'out_results/out_nobadwords.csv')
-    time_remover('out_results/out_nobadwords.csv', 'out_results/out_notime.csv')
-    repetitive_number_parentheses('out_results/out_notime.csv', 'out_results/out_noparentheses.csv')
-    spaces_remover('out_results/out_noparentheses.csv', 'out_results/out_nospaces.csv')
-    paragraph_finder('out_results/out_nospaces.csv', 'out_results/out_paragraphs.csv')
-    preprocess_enumerations('out_results/out_paragraphs.csv', 'out_results/out_enum.csv')
-    numbers_to_text('out_results/out_enum.csv', 'out_results/out_nonumbers.csv')
-    special_char_remover('out_results/out_nonumbers.csv', 'out_results/out_nospecchar.csv')
-    spaces_remover('out_results/out_nospecchar.csv', 'out_results/out_nospaces2.csv')
-    word_dico = get_vocabulary('out_results/out_nospaces2.csv')
-    toss_off_rare_words('out_results/out_nospaces2.csv', 'out_results/out_norare.csv', word_dico)
-    spaces_remover('out_results/out_norare.csv', 'out_results/output.csv')
-
-    # This is a stack of tests in order to check if the digit to text mapping works correctly
-    # num_to_words(0)
-    # num_to_words(100)
-    # num_to_words(1000)
-    # num_to_words(1000000)
-    # num_to_words(1000000000)
-    # num_to_words(999999999999)
-    # num_to_words(9)
-    # num_to_words(10)
-    # num_to_words(12)
-    # num_to_words(13005)
-    # num_to_words(25)
-    # num_to_words(40)
-    # num_to_words(164)
+    # New folder in which we will save the output
+    # outpath = "out_results/"
+    # os.mkdir(outpath)
+    outpath = ""
+    # Run preprocessing over the input
+    anonimization_remover(sys.argv[1], outpath+'out_noanonim.csv')
+    doctor_quotes_remover(outpath+'out_noanonim.csv', outpath+'out_nodocquotes.csv')
+    os.remove(outpath+'out_noanonim.csv')
+    shape_to_csv(outpath+'out_nodocquotes.csv', outpath+'out_csvshape.csv')
+    os.remove(outpath+'out_nodocquotes.csv')
+    remove_extra_commas(outpath+'out_csvshape.csv', outpath+'out_noextracommas.csv')
+    os.remove(outpath+'out_csvshape.csv')
+    lower_all_text(outpath+'out_noextracommas.csv', outpath+'out_lower.csv')
+    os.remove(outpath+'out_noextracommas.csv')
+    clean_useless_words(outpath+'out_lower.csv', outpath+'out_nobadwords.csv')
+    os.remove(outpath+'out_lower.csv')
+    time_remover(outpath+'out_nobadwords.csv', outpath+'out_notime.csv')
+    os.remove(outpath+'out_nobadwords.csv')
+    repetitive_number_parentheses(outpath+'out_notime.csv', outpath+'out_noparentheses.csv')
+    os.remove(outpath+'out_notime.csv')
+    spaces_remover(outpath+'out_noparentheses.csv', outpath+'out_nospaces.csv')
+    os.remove(outpath+'out_noparentheses.csv')
+    paragraph_finder(outpath+'out_nospaces.csv', outpath+'out_paragraphs.csv')
+    os.remove(outpath+'out_nospaces.csv')
+    preprocess_enumerations(outpath+'out_paragraphs.csv', outpath+'out_enum.csv')
+    os.remove(outpath+'out_paragraphs.csv')
+    numbers_to_text(outpath+'out_enum.csv', outpath+'out_nonumbers.csv')
+    os.remove(outpath+'out_enum.csv')
+    special_char_remover(outpath+'out_nonumbers.csv', outpath+'out_nospecchar.csv')
+    os.remove(outpath+'out_nonumbers.csv')
+    spaces_remover(outpath+'out_nospecchar.csv', outpath+'out_nospaces2.csv')
+    os.remove(outpath+'out_nospecchar.csv')
+    word_dico = get_vocabulary(outpath+'out_nospaces2.csv')
+    toss_off_rare_words(outpath+'out_nospaces2.csv', outpath+'out_norare.csv', word_dico)
+    os.remove(outpath+'out_nospaces2.csv')
+    spaces_remover(outpath+'out_norare.csv', outpath+'output.csv')
+    os.remove(outpath+'out_norare.csv')
 
     # Those lines show how the curve changed after we started to consider enumerations as a single paragraph
     # get_paragraph_distribution('out_paragraphs.csv')

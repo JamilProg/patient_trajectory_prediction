@@ -5,10 +5,17 @@ import os, sys
 def splitDocument(sizeInMo):
     """Split the MIMIC III document for every 50 Mo (about) without cutting a note"""
     dirchunks = "./data/chunkssmall/"
+    if not os.path.exists('data'):
+        os.makedirs('data')
+    if not os.path.exists('data/chunkssmall'):
+        os.makedirs('data/chunkssmall')
+    if not os.path.exists('data/outputchunkssmall'):
+        os.makedirs('data/outputchunkssmall')
     i = 1
     make_new_file = True
     outputFile = ""
     with open(sys.argv[1]) as fread:
+        fread.readline() # avoid first line
         for line in fread.readlines():
             count_comma = line.count(',')
             count_quote = line.count('"')
