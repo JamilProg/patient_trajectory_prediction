@@ -11,7 +11,9 @@ All of these scripts were ran with Python3.
 
 # Step 2 : CUI Recognizer with QuickUMLS 
 
-2.1 Install QuickUMLS, see : https://github.com/Georgetown-IR-Lab/QuickUMLS - at the end, you should have a QuickUMLS folder.
+2.1 Install QuickUMLS, see : https://github.com/Georgetown-IR-Lab/QuickUMLS - at the end, you should have a QuickUMLS folder, as follow :
+
+![Alt text](miscellaneous/QU_repo.png?raw=true "QuickUMLS Repository tree structure")
 
 2.2 Put the "data" folder generated in step 1.3, and the installed "QuickUMLS" folder in concept_annotation folder.
 
