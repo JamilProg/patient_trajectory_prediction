@@ -58,7 +58,7 @@ Parameters are:
 
 ## Step 3.2B : Mortality prediction
 
-In mortality_prediction folder, you can train and test a model whose architecture is :
+In mortality_prediction folder, you can train and test a model (K-Fold Crossvalidation) whose architecture is :
 
 Option 1) Fully-connected (02_FFN_mortality.py)
 
