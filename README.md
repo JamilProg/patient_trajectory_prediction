@@ -38,7 +38,7 @@ A new file is generated, the data is ready for Deep Learning !
 
 1.1 Put the data file in "PyTorch_scripts/any target task/".
 
-1.2 Run 01_data_preparation.py
+1.2 Run 01_data_preparation.py (or 01_data_prep_mortality.py / 01_data_prep_readmission.py depending the chosen task).
 
 Parameters are:
 
@@ -54,8 +54,30 @@ Parameters are:
 
 ## Step 3.2A : Diagnoses prediction
 
+
+
 ## Step 3.2B : Mortality prediction
 
+In mortality_prediction folder, you can train and test a model whose architecture is :
+
+Option 1) Fully-connected (02_FFN_mortality.py)
+
+Option 2) RNN with Gated Recurrent Unit cells (02_GRU_mortality.py)
+
+Important arguments for both models are:
+
+--hiddenDimSize : size of the hidden layer
+
+--batchSize : size of batches
+
+--nEpochs : number of epochs
+
+--lr : learning rate
+
+--dropOut : drop-out probability in the last layer
+
 ## Step 3.2C : Readmission prediction
+
+For readmission prediction, it is mainly the same pattern as mortality_prediction, but in readmission_prediction folder.
 
 https://github.com/JamilProg/script_preproc_MIMIC/blob/master/README.md
