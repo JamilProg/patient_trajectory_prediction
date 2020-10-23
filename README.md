@@ -36,9 +36,9 @@ A new file is generated, the data is ready for Deep Learning !
 
 ## Step 3.1 : Data preparation
 
-1.1 Put the data file in "PyTorch_scripts/any target task/".
+1.1 Put the data file in "PyTorch_scripts/(any_target_task)/".
 
-1.2 Run 01_data_preparation.py (or 01_data_prep_mortality.py / 01_data_prep_readmission.py depending the chosen task).
+1.2 Run 01_data_preparation.py (or 01_data_prep_mortality.py / 01_data_prep_readmission.py depending on the chosen task).
 
 Parameters are:
 
@@ -50,7 +50,7 @@ Parameters are:
 
 --output_file_name : name of the output (of your choice).
 
-1.3 A npz file is generated, your data is ready for training!
+1.3 A npz file (two for mortality_prediction) is generated, your data is ready for training!
 
 ## Step 3.2A : Diagnoses prediction
 
