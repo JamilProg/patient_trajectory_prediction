@@ -16,8 +16,7 @@ class Network(nn.Module):
     def __init__(self):
         super().__init__()
 
-        ARGS.inputdim = ARGS.numberOfInputCUIInts + ARGS.numberOfInputCCSInts
-        # ARGS.inputdim = ARGS.numberOfInputCUIInts
+        ARGS.inputdim = ARGS.numberOfInputCUIInts + ARGS.numberOfInputCCSInts if ARGS.withCCS else ARGS.numberOfInputCUIInts
         self.num_classes = 1
         self.num_layers = ARGS.numLayers
         self.hidden_size = ARGS.hiddenDimSize
@@ -94,7 +93,7 @@ def load_tensors():
                 one_hot_CUI[cuitoint[cui_int]] = 1
             for ccs_int in adm[3]:
                 one_hot_CCS[ccstoint[ccs_int]] = 1
-            one_hot_X = one_hot_CUI + one_hot_CCS
+            one_hot_X = one_hot_CUI + one_hot_CCS if ARGS.withCCS else one_hot_CUI
             sequence_X.append(one_hot_X)
             # compute patient readmission
             within30days = [1]
@@ -283,7 +282,8 @@ def parse_arguments():
     parser.add_argument('--lr', type=float, default=0.01, help='Learning rate.')
     parser.add_argument('--dropOut', type=float, default=0.5, help='GRU Dropout.')
     parser.add_argument('--kFold', type=int, default=5, help='K value (int) of K-fold cross-validation.')
-    
+    parser.add_argument('--withCCS', help='add CCS feature in input.')
+
     ARGStemp = parser.parse_args()
     return ARGStemp
 

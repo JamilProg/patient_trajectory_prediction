@@ -16,8 +16,7 @@ class Network(nn.Module):
     def __init__(self):
         super().__init__()
 
-        ARGS.inputdim = ARGS.numberOfInputCUIInts + ARGS.numberOfInputCCSInts
-        # ARGS.inputdim = ARGS.numberOfInputCUIInts
+        ARGS.inputdim = ARGS.numberOfInputCUIInts + ARGS.numberOfInputCCSInts if ARGS.withCCS else ARGS.numberOfInputCUIInts
         self.fc1 = nn.Linear(ARGS.inputdim, ARGS.hiddenDimSize)
         self.fc2 = nn.Linear(ARGS.hiddenDimSize, 3)
         self.relu = nn.ReLU()
@@ -30,7 +29,6 @@ class Network(nn.Module):
         x = self.relu(x)
         x = self.dropout(x)
         x = self.fc2(x)
-        # x = self.sigmo(x)
         return x
 
 class my_dataset(dt.Dataset):
@@ -83,8 +81,7 @@ def load_tensors():
                 one_hot_CUI[cuitoint[cui_int]] = 1
             for ccs_int in adm[3]:
                 one_hot_CCS[ccstoint[ccs_int]] = 1
-            one_hot_X = one_hot_CUI + one_hot_CCS
-            # one_hot_X = one_hot_CUI
+            one_hot_X = one_hot_CUI + one_hot_CCS if ARGS.withCCS else one_hot_CUI
             vectors_trainListX.append(one_hot_X)
             # compute patient mortality
             Y_sample = [0] * 3
@@ -242,9 +239,10 @@ def parse_arguments():
     parser.add_argument('--batchSize', type=int, default=50, help='Batch size.')
     parser.add_argument('--nEpochs', type=int, default=100, help='Number of training iterations.')
     parser.add_argument('--lr', type=float, default=0.001, help='Learning rate.')
-    parser.add_argument('--dropOut', type=float, default=0.5, help='GRU Dropout.')
+    parser.add_argument('--dropOut', type=float, default=0.5, help='FFN Dropout.')
     parser.add_argument('--kFold', type=int, default=5, help='K value (int) of K-fold cross-validation.')
-    
+    parser.add_argument('--withCCS', help="add CCS features in the input.")
+
     ARGStemp = parser.parse_args()
     return ARGStemp
 
