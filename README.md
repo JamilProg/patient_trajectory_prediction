@@ -25,9 +25,8 @@ GPU Quadro P6000
 
 Parameters are:
 
---t : Float which is QuickUMLS Threshold, should be between 0 and 1 (default --t=0.9).
-
---TUI : String which represents the TUI List filter, either "Alpha" or "Beta" (default --TUI=Beta).
+*--t : Float which is QuickUMLS Threshold, should be between 0 and 1 (default --t=0.9).
+*--TUI : String which represents the TUI List filter, either "Alpha" or "Beta" (default --TUI=Beta).
 
 2.4 Concatenate the multiple outputs to make one final file. For that, move to "data/outputchunkssmall" and run the 4th and last command mentionned in : useful_commands.txt
 
@@ -45,11 +44,9 @@ A new file is generated, the data is ready for Deep Learning !
 
 Parameters are:
 
---admissions_file : path to the MIMIC III's ADMISSIONS.csv file.
-
---diagnoses_file : path to the MIMIC III's DIAGNOSES_ICD.csv file.
-
---notes_file : path to the data file.
+*--admissions_file : path to the MIMIC III's ADMISSIONS.csv file.
+*--diagnoses_file : path to the MIMIC III's DIAGNOSES_ICD.csv file.
+*--notes_file : path to the data file.
 
 1.3 A npz file (two for mortality_prediction) is generated, your data is ready for training!
 
@@ -59,17 +56,12 @@ Option 1 - FFN: Run 02_FFN_diagprediction.py (K-Fold Crossvalidation)
 
 Optional arguments are:
 
---withCCS : add --withCCS=1 if you want to add CCS feature in the input (CCS one-hot concatenated with CUI one-hot)
-
---hiddenDimSize : size of the hidden layer
-
---batchSize : size of batches
-
---nEpochs : number of epochs
-
---lr : learning rate
-
---dropOut : drop-out probability in the last layer
+*--withCCS : add --withCCS=1 if you want to add CCS feature in the input (CCS one-hot concatenated with CUI one-hot)
+*--hiddenDimSize : size of the hidden layer
+*--batchSize : size of batches
+*--nEpochs : number of epochs
+*--lr : learning rate
+*--dropOut : drop-out probability in the last layer
 
 Option 2 - RNN (NOT k-fold crossvalidation script because too long and heavy): train by running 02_GRU_train_GPU.py for GRU (or 02_LSTM_train_GPU.py for LSTM)
 
@@ -77,17 +69,12 @@ Then, test by running 03_GRU_test.py for GRU (or 03_LSTM_test.py for LSTM).
 
 Optional arguments for both RNN models are:
 
---withCCS : add --withCCS=1 if you want to add CCS feature in the input (CCS one-hot concatenated with CUI one-hot) [only training script]
-
---hiddenDimSize : size of the hidden layer [both training script and testing script]
-
---batchSize : size of batches [both training script and testing script]
-
---nEpochs : number of epochs [only training script]
-
---lr : learning rate [only training script]
-
---dropOut : drop-out probability in the last layer [both training script and testing script]
+*--withCCS : add --withCCS=1 if you want to add CCS feature in the input (CCS one-hot concatenated with CUI one-hot) [only training script]
+*--hiddenDimSize : size of the hidden layer [both training script and testing script]
+*--batchSize : size of batches [both training script and testing script]
+*--nEpochs : number of epochs [only training script]
+*--lr : learning rate [only training script]
+*--dropOut : drop-out probability in the last layer [both training script and testing script]
 
 ## Step 3.2B : Mortality prediction
 
@@ -99,20 +86,15 @@ Option 2) RNN with Gated Recurrent Unit cells (02_GRU_mortality.py)
 
 Optional arguments for both models are:
 
---withCCS : add --withCCS=1 if you want to add CCS feature in the input (CCS one-hot concatenated with CUI one-hot)
-
---hiddenDimSize : size of the hidden layer
-
---batchSize : size of batches
-
---nEpochs : number of epochs
-
---lr : learning rate
-
---dropOut : drop-out probability in the last layer
+*--withCCS : add --withCCS=1 if you want to add CCS feature in the input (CCS one-hot concatenated with CUI one-hot)
+*--hiddenDimSize : size of the hidden layer
+*--batchSize : size of batches
+*--nEpochs : number of epochs
+*--lr : learning rate
+*--dropOut : drop-out probability in the last layer
 
 ## Step 3.2C : Readmission prediction
 
-For readmission prediction, it is mainly the same pattern as mortality_prediction, but in readmission_prediction folder.
+For readmission prediction, it is mainly the same method and arguments as mortality_prediction, but in readmission_prediction folder.
 
 https://github.com/JamilProg/script_preproc_MIMIC/blob/master/README.md
