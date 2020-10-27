@@ -1,8 +1,8 @@
 # Step 0 : Python environment
-All of these scripts were ran with Python 3.7.
-PyTorch version 1.5.0
-Cuda version 10.2
-GPU Quadro P6000
+- All of these scripts were ran with Python 3.7.
+- PyTorch version 1.5.0
+- Cuda version 10.2
+- GPU Quadro P6000
 
 # Step 1 : Cleaning data from MIMIC III's NoteEvents.csv (data cleaning)
 1.1 Move to data_cleaning folder.
