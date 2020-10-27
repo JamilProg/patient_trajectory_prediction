@@ -55,7 +55,38 @@ Parameters are:
 
 ## Step 3.2A : Diagnoses prediction
 
+Option 1 - FFN: Run 02_FFN_diagprediction.py (K-Fold Crossvalidation)
 
+Optional arguments are:
+
+--withCCS : add --withCCS=1 if you want to add CCS feature in the input (CCS one-hot concatenated with CUI one-hot)
+
+--hiddenDimSize : size of the hidden layer
+
+--batchSize : size of batches
+
+--nEpochs : number of epochs
+
+--lr : learning rate
+
+--dropOut : drop-out probability in the last layer
+
+Option 2 - RNN (NOT k-fold crossvalidation script because too long and heavy): train by running 02_GRU_train_GPU.py for GRU (or 02_LSTM_train_GPU.py for LSTM)
+
+Then, test by running 03_GRU_test.py for GRU (or 03_LSTM_test.py for LSTM).
+
+Optional arguments for both RNN models are:
+--withCCS : add --withCCS=1 if you want to add CCS feature in the input (CCS one-hot concatenated with CUI one-hot) [only training script]
+
+--hiddenDimSize : size of the hidden layer [both training script and testing script]
+
+--batchSize : size of batches [both training script and testing script]
+
+--nEpochs : number of epochs [only training script]
+
+--lr : learning rate [only training script]
+
+--dropOut : drop-out probability in the last layer [both training script and testing script]
 
 ## Step 3.2B : Mortality prediction
 
