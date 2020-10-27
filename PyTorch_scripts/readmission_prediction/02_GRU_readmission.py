@@ -12,6 +12,7 @@ import numpy as np
 from sklearn.metrics import roc_auc_score as roc
 import gc
 
+
 class Network(nn.Module):
     def __init__(self):
         super().__init__()
@@ -105,8 +106,7 @@ def load_tensors():
 
     # Padding : make sure that each sample sequence has the same length (maxSeqLength)
     # X case
-    # null_value = np.repeat(0, ARGS.numberOfInputCUIInts)
-    null_value = np.repeat(0, ARGS.numberOfInputCUIInts+ARGS.numberOfInputCCSInts)
+    null_value = np.repeat(0, ARGS.numberOfInputCUIInts+ARGS.numberOfInputCCSInts) if ARGS.withCCS else np.repeat(0, ARGS.numberOfInputCUIInts)
     for adlist in vectors_trainListX:
         for i in range(maxSeqLength - len(adlist)):
             adlist.append(null_value)
@@ -133,7 +133,7 @@ def train():
     data_x, data_y = load_tensors()
 
     print("Available GPU :", torch.cuda.is_available())
-    torch.cuda.set_device(1)
+    torch.cuda.set_device(0)
 
     sizedata = len(data_x)
     print("Data of size:", sizedata)
@@ -161,7 +161,7 @@ def train():
         Y_train = copysplitY
         model = Network().cuda()
 
-        with torch.cuda.device(1):
+        with torch.cuda.device(0):
             # Hyperparameters :
             epochs = ARGS.nEpochs
             batchsize = ARGS.batchSize

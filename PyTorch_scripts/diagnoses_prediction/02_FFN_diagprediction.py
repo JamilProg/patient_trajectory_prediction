@@ -10,6 +10,7 @@ import torch.utils.data as dt
 from torch.autograd import Variable
 import numpy as np
 from tqdm import tqdm_notebook as tqdm
+from sklearn.metrics import roc_auc_score as roc
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -20,8 +21,7 @@ class Network(nn.Module):
         super().__init__()
 
         # Inputs to hidden layer linear transformation
-        ARGS.inputdim = ARGS.numberOfInputCUIInts + ARGS.numberOfInputCCSInts
-        # ARGS.inputdim = ARGS.numberOfInputCUIInts
+        ARGS.inputdim = ARGS.numberOfInputCUIInts + ARGS.numberOfInputCCSInts if ARGS.withCCS else ARGS.numberOfInputCUIInts
         self.hidden = nn.Linear(ARGS.inputdim, ARGS.hiddenDimSize)
         self.hidden2 = nn.Linear(ARGS.hiddenDimSize, ARGS.numberOfOutputCodes)
 
@@ -99,8 +99,7 @@ def load_tensors():
                 one_hot_CUI[cuitoint[cui_int]] = 1
             for ccs_int in adm[3]:
                 one_hot_CCS[ccstoint[ccs_int]] = 1
-            one_hot_X = one_hot_CUI + one_hot_CCS
-            # one_hot_X = one_hot_CUI
+            one_hot_X = one_hot_CUI + one_hot_CCS if ARGS.withCCS else one_hot_CUI
             vectors_trainListX.append(one_hot_X)
             if i != 0:
                 # Add every admission diagnoses in Y but the first one's diagnoses
@@ -138,7 +137,8 @@ def train():
     # Prepare array of scores
     precision_list = []
     recall_list = []
-    valloss_list = []
+    # valloss_list = []
+    AUC_list = []
     for ind_i in range(0,k):
         # Prepare X_train Y_train X_test Y_test
         X_test = splitted_x[ind_i]
@@ -207,12 +207,15 @@ def train():
                                    100. * batch_idx / len(train_loader)))
                         print(loss.data)
 
+            # saving model
+            torch.save(model.state_dict(), ARGS.outFile + str(ind_i))
+
             # Testing and save score
             total = 0
             correct = 0
             model.eval()
             # Validation loss
-            loss_values = []
+            # loss_values = []
             itr_ctr = 0
             for batch_idx, (data, target) in enumerate(test_loader):
                 #with torch.no_grad():
@@ -220,10 +223,10 @@ def train():
                 data, target = Variable(data, volatile=True), Variable(target, volatile=True)
                 net_out = model(data)
                 loss = criterion(net_out, target)
-                loss_values.append(loss)
+                # loss_values.append(loss)
 
             # Validation Loss in the list
-            valloss_list.append(np.mean(loss_values))
+            # valloss_list.append(np.mean(loss_values))
 
             P = list()
             R = list()
@@ -248,9 +251,9 @@ def train():
             total_true_list = list()
             for data in test_loader:
                 x, labels = data
-                for y in labels:
+                for y in labels :
                     total_true = 0
-                    for val in y:
+                    for val in y :
                         if val == 1:
                             total_true += 1
                     total_true_list.append(total_true)
@@ -275,11 +278,26 @@ def train():
             precision_list.append(P)
             recall_list.append(R)
 
+            # AUROC
+            YTRUE = None
+            YPROBA = None
+            for data in test_loader:
+                x, labels = data
+                x, labels = Variable(x), Variable(labels)
+                outputs = model(x).detach().cpu().numpy()
+                labels = labels.detach().cpu().numpy()
+                for batch_true, batch_prob in zip(labels, outputs):
+                    YTRUE = np.concatenate((YTRUE, [batch_true]), axis=0) if YTRUE is not None else [batch_true]
+                    YPROBA = np.concatenate((YPROBA, [batch_prob]), axis=0) if YPROBA is not None else [batch_prob]
+            ROC_avg_score=roc(YTRUE, YPROBA, average='micro', multi_class='ovr')
+            AUC_list.append(ROC_avg_score)
+
     # Output score of each fold + average
     print("Scores for each fold:")
     print("Precision:", precision_list)
     print("Recall:", recall_list)
-    print("Loss:", valloss_list)
+    print("AUROC:", AUC_list)
+    # print("Loss:", valloss_list)
     print("Average scores:")
     P1=(sum([precision_list[k][0] for k in range(0, k)])/k)
     P2=(sum([precision_list[k][1] for k in range(0, k)])/k)
@@ -287,25 +305,29 @@ def train():
     R10=(sum([recall_list[k][0] for k in range(0, k)])/k)
     R20=(sum([recall_list[k][1] for k in range(0, k)])/k)
     R30=(sum([recall_list[k][2] for k in range(0, k)])/k)
-    loss_avg=sum(valloss_list)/len(valloss_list)
+    AUROC=(sum([AUC_list[k] for k in range(0,k)])/k)
+    # loss_avg=sum(valloss_list)/len(valloss_list)
     print("Precision@1:", P1)
     print("Precision@2:", P2)
     print("Precision@3:", P3)
     print("Recall@10:", R10)
     print("Recall@20:", R20)
     print("Recall@30:", R30)
-    print("Loss:", loss_avg)
+    print("AUROC:", AUROC)
+    # print("Loss:", loss_avg)
 
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('--inputdata', type=str, default='prepared_data.npz', metavar='<visit_file>')
+    parser.add_argument('--outFile', metavar='out_file', default='model_output.pt', help='Any file name to store the model.')
     parser.add_argument('--hiddenDimSize', type=int, default=10000, help='Number of neurons in the hidden layer.')
     parser.add_argument('--batchSize', type=int, default=100, help='Batch size.')
     parser.add_argument('--nEpochs', type=int, default=5000, help='Number of training iterations.')
     parser.add_argument('--lr', type=float, default=0.01, help='Learning rate.')
     parser.add_argument('--dropOut', type=float, default=0.5, help='Dropout rate.')
     parser.add_argument('--kFold', type=int, default=5, help='K value (int) of K-fold cross-validation.')
+    parser.add_argument('--withCCS', type=int, default=0, help='Add CCS feature in input.')
 
     ARGStemp = parser.parse_args()
     return ARGStemp

@@ -106,8 +106,7 @@ def load_tensors():
 
     # Padding : make sure that each sample sequence has the same length (maxSeqLength)
     # X case
-    # null_value = np.repeat(0, ARGS.numberOfInputCUIInts)
-    null_value = np.repeat(0, ARGS.numberOfInputCUIInts+ARGS.numberOfInputCCSInts)
+    null_value = np.repeat(0, ARGS.numberOfInputCUIInts+ARGS.numberOfInputCCSInts) if ARGS.withCCS else np.repeat(0, ARGS.numberOfInputCUIInts)
     for adlist in vectors_trainListX:
         for i in range(maxSeqLength - len(adlist)):
             adlist.append(null_value)

@@ -10,25 +10,19 @@ def post_process():
         for line in fread1.readlines():
             # print("l",line)
             cl = re.sub(r'\n', r' ', line)
-            # if line.count(",") > 0 :
-            #     processed_file.write(line)
-            #     continue
-            # cl = re.sub(r'(C\d+ *\")', r'\1\n', cl)
             tp1.write(cl)
     tp1.close()
 
     tp2 = open("temporator2.csv", 'w')
     with open("temporator.csv") as fread2:
         for line in fread2.readlines():
-            # if line.count(",") > 0 :
-            #     processed_file.write(line)
-            #     continue
             cl = re.sub(r'(C\d+ *\")', r'\1\n', line)
             cl = re.sub(r'\" \"', r'\" \"\n', cl)
             cl = re.sub(r'\n +', r'\n', cl)
             cl = re.sub(r' +', r' ', cl)
             tp2.write(cl)
     tp2.close()
+    os.remove("temporator.csv")
 
     pattern = re.compile(r'^.*?,.*?,\d+,')
     finalfile = open("post_processed_output.csv", 'w')
@@ -45,6 +39,7 @@ def post_process():
                 continue
             finalfile.write(line)
     finalfile.close()
+    os.remove("temporator2.csv")
 
 
 def main():
