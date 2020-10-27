@@ -76,6 +76,7 @@ Option 2 - RNN (NOT k-fold crossvalidation script because too long and heavy): t
 Then, test by running 03_GRU_test.py for GRU (or 03_LSTM_test.py for LSTM).
 
 Optional arguments for both RNN models are:
+
 --withCCS : add --withCCS=1 if you want to add CCS feature in the input (CCS one-hot concatenated with CUI one-hot) [only training script]
 
 --hiddenDimSize : size of the hidden layer [both training script and testing script]
