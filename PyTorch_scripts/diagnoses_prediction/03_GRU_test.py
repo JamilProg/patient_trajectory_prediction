@@ -10,12 +10,12 @@ import torch.utils.data as dt
 from torch.autograd import Variable
 import numpy as np
 from tqdm import tqdm_notebook as tqdm
+from sklearn.metrics import roc_auc_score as roc
 
 
 class Network(nn.Module):
         def __init__(self):
             super().__init__()
-
             self.num_classes = ARGS.numberOfOutputCodes
             self.num_layers = ARGS.numLayers
             self.hidden_size = ARGS.hiddenDimSize
@@ -135,6 +135,27 @@ def test():
         R.append(recall)
         correct = 0
         total = 0
+
+    # AUROC
+    YTRUE = None
+    YPROBA = None
+    h = model.init_hidden()
+    for (data, targets) in test_loader:
+        x, labels = Variable(data.float()), Variable(targets.float())
+        if x.size(0) != ARGS.batchSize:
+            continue
+        outputs, h = model(x, h)
+        outputs = outputs.detach().cpu().numpy()
+        x = x.detach().cpu().numpy()
+        labels = labels.detach().cpu().numpy()
+        for batch_true, batch_prob in zip(labels, outputs):
+            for adm_true, adm_prob in zip(batch_true, batch_prob):
+                if torch.max(torch.from_numpy(adm_true)) != 1:
+                    break
+                YTRUE = np.concatenate((YTRUE, [adm_true]), axis=0) if YTRUE is not None else [adm_true]
+                YPROBA = np.concatenate((YPROBA, [adm_prob]), axis=0) if YPROBA is not None else [adm_prob]
+    ROC_avg_score = roc(YTRUE, YPROBA, average='micro', multi_class='ovr')
+    print("ROC Average Score:", ROC_avg_score)
 
 
 def parse_arguments():

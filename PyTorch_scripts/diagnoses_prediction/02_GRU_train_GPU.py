@@ -14,8 +14,7 @@ import numpy as np
 class Network(nn.Module):
     def __init__(self):
         super().__init__()
-
-        ARGS.inputdim = ARGS.numberOfInputCUIInts
+        ARGS.inputdim = ARGS.numberOfInputCUIInts + ARGS.numberOfInputCCSInts if ARGS.withCCS else ARGS.numberOfInputCUIInts
         self.num_classes = ARGS.numberOfInputCCSInts
         self.num_layers = ARGS.numLayers
         self.hidden_size = ARGS.hiddenDimSize
@@ -47,8 +46,8 @@ class my_dataset(dt.Dataset):
 
 
 def load_tensors():
-	#-----------------------------------------
-	# pickle input map - each entry is a pair (subject_id, [(hadm_id,admittime, [CUIsvector], [CCSsvector])]
+    #-----------------------------------------
+    # pickle input map - each entry is a pair (subject_id, [(hadm_id,admittime, [CUIsvector], [CCSsvector])]
     # notesVectors_trainMapX = pickle.load(open(ARGS.inputFileNotes, 'rb'))
     subjecttoadm_map = pickle.load(open(ARGS.inputdata, 'rb'))
     setOfDistinctCUIs = set()
@@ -93,7 +92,6 @@ def load_tensors():
                 one_hot_CCS = [0] * ARGS.numberOfInputCCSInts
                 for ccs_int in adm[3]:
                     one_hot_CCS[ccstoint[ccs_int]] = 1
-                # diagnoses_trainListY.append(one_hot_CCS)
                 sequence_Y.append(one_hot_CCS)
                 continue
             one_hot_CUI = [0] * ARGS.numberOfInputCUIInts
@@ -102,19 +100,17 @@ def load_tensors():
                 one_hot_CUI[cuitoint[cui_int]] = 1
             for ccs_int in adm[3]:
                 one_hot_CCS[ccstoint[ccs_int]] = 1
-            # one_hot_X = one_hot_CUI + one_hot_CCS
-            # vectors_trainListX.append(one_hot_X)
-            sequence_X.append(one_hot_CUI)
+            one_hot_X = one_hot_CUI + one_hot_CCS if ARGS.withCCS else one_hot_CUI
+            sequence_X.append(one_hot_X)
             if i != 0:
                 # Add every admission diagnoses in Y but the first one's diagnoses
-                # diagnoses_trainListY.append(one_hot_CCS)
                 sequence_Y.append(one_hot_CCS)
         vectors_trainListX.append(sequence_X)
         diagnoses_trainListY.append(sequence_Y)
 
     # Padding : make sure that each sample sequence has the same length (maxSeqLength)
     # X case
-    null_value = np.repeat(0, ARGS.numberOfInputCUIInts)
+    null_value = np.repeat(0, ARGS.numberOfInputCUIInts + ARGS.numberOfInputCCSInts) if ARGS.withCCS else np.repeat(0, ARGS.numberOfInputCUIInts)
     for adlist in vectors_trainListX:
         for i in range(maxSeqLength - len(adlist)):
             adlist.append(null_value)
@@ -142,17 +138,6 @@ def load_tensors():
     pickle.dump(vectors_testListX, open('X-test.data', 'wb'), -1)
     pickle.dump(diagnoses_testListY, open('Y-test.data', 'wb'), -1)
 
-    # Saving hadm_id of the test data, so that it becomes possible to find the original records
-    # hadm_id_testList = hadm_id_List[int(math.ceil(0.9*numberOfPatients)):numberOfPatients]
-    # hadm_file = open("HADM_ID-test.txt", "w")
-    # hadm_file.write('output_index: subject_id, hadm_id'+'\n')
-    # output_index = 0
-    # for i in range(len(hadm_id_testList)):
-    # 	for admission in hadm_id_testList[i][1]:
-    # 		hadm_file.write(str(output_index)+': '+str(hadm_id_testList[i][0])+','+str(admission)+'\n')
-    # 		output_index += 1
-    # hadm_file.close()
-
     return vectors_trainListX, vectors_testListX, diagnoses_trainListY, diagnoses_testListY
 
 
@@ -161,16 +146,12 @@ def train():
     print("Available GPU :", torch.cuda.is_available())
     model = Network().cuda()
     with torch.cuda.device(0):
-        # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        # model.to(device)
         # Hyperparameters :
         epochs = ARGS.nEpochs
         batchsize = ARGS.batchSize
         learning_rate = ARGS.lr
         log_interval = 2
         criterion = nn.BCEWithLogitsLoss()
-        # criterion = nn.BCELoss()
-        # criterion = nn.CrossEntropyLoss()
         # optimizer = optim.SGD(model.parameters(), lr=learning_rate)
         optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
@@ -183,8 +164,6 @@ def train():
         print("Y_dataset_shape=",tensor_y.shape)
         dataset = dt.TensorDataset(tensor_x, tensor_y) # create dataset
 
-        # # train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, test_size])
-
         train_loader = dt.DataLoader(
             dataset,
             batch_size=batchsize,
@@ -194,11 +173,9 @@ def train():
         for epoch in range(epochs):
             h = model.init_hidden()
             for batch_idx, (data, target) in enumerate(train_loader):
-                # h = tuple([Variable(e).data for e in h])
                 data, target = Variable(data.float()), Variable(target.float())
                 if data.size(0) != ARGS.batchSize:
                     continue
-                #data, target = Variable(data).to(device), Variable(target).to(device)
                 h = h.detach()
                 optimizer.zero_grad()
                 net_out, h = model(data, h)
@@ -210,6 +187,7 @@ def train():
                             epoch, batch_idx * len(data), len(train_loader.dataset),
                                    100. * batch_idx / len(train_loader)))
                     print(loss.data)
+
     # saving model
     torch.save(model.state_dict(), ARGS.outFile)
 
@@ -220,14 +198,14 @@ def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('--inputdata', type=str, default='prepared_data.npz', metavar='<visit_file>')
     parser.add_argument('--outFile', metavar='out_file', default='model_output.pt', help='Any file name to store the model.')
-    # parser.add_argument('--maxConsecutiveNonImprovements', type=int, default=10, help='Training will run until reaching the maximum number of epochs without improvement before stopping the training')
     parser.add_argument('--hiddenDimSize', type=int, default=200, help='Size of GRU hidden layer')
     parser.add_argument('--numLayers', type=int, default=1, help='Number of GRU layers')
     parser.add_argument('--batchSize', type=int, default=10, help='Batch size.')
     parser.add_argument('--nEpochs', type=int, default=1500, help='Number of training iterations.')
     parser.add_argument('--lr', type=float, default=0.01, help='Learning rate.')
     parser.add_argument('--dropOut', type=float, default=0, help='Dropout rate.')
-    
+    parser.add_argument('--withCCS', type=int, default=0, help='Add CCS feature in input.')
+
     ARGStemp = parser.parse_args()
     return ARGStemp
 

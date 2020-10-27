@@ -208,7 +208,7 @@ def train():
                         print(loss.data)
 
             # saving model
-            torch.save(model.state_dict(), ARGS.outFile + str(ind_i))
+            # torch.save(model.state_dict(), ARGS.outFile + str(ind_i))
 
             # Testing and save score
             total = 0
