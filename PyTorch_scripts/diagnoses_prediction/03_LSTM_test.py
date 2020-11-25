@@ -159,8 +159,8 @@ def test():
             for adm_true, adm_prob in zip(batch_true, batch_prob):
                 if torch.max(torch.from_numpy(adm_true)) != 1:
                     break
-                YTRUE = np.concatenate(YTRUE, [adm_true]), axis=0) if YTRUE is not None else [adm_true]
-                YPROBA = np.concatenate(YPROBA, [adm_prob]) axis=0) if YPROBA is not None else [adm_prob]
+                YTRUE = np.concatenate((YTRUE, [adm_true]), axis=0) if YTRUE is not None else [adm_true]
+                YPROBA = np.concatenate((YPROBA, [adm_prob]), axis=0) if YPROBA is not None else [adm_prob]
     ROC_avg_score = roc(YTRUE, YPROBA, average='micro', multi_class='ovr')
     print("ROC Average Score:", ROC_avg_score)
 
@@ -173,7 +173,7 @@ def parse_arguments():
     parser.add_argument('--batchSize', type=int, default=10, help='Batch size')
     parser.add_argument('--hiddenDimSize', type=int, default=200, help='Size of LSTM hidden layer')
     parser.add_argument('--numLayers', type=int, default=1, help='Number of LSTM layers')
-    parser.add_argument('--dropOut', type=float, default=0.5, help='LSTM Dropout.')
+    parser.add_argument('--dropOut', type=float, default=0, help='LSTM Dropout.')
     ARGStemp = parser.parse_args()
     return ARGStemp
 
