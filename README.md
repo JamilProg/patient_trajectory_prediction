@@ -13,7 +13,7 @@
 
 1.4 At this step, we have a new folder called "data" which contains two folders. The first one (chunkssmall) contains all files and the other one is empty.
 
-# Step 2 : CUI Recognizer with QuickUMLS (concept annotation)
+# Step 2 : CUI Recognizer with QuickUMLS (concept extraction)
 
 2.1 Install QuickUMLS, see : https://github.com/Georgetown-IR-Lab/QuickUMLS - at the end, you should have a QuickUMLS folder, as follow :
 
