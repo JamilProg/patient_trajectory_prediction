@@ -27,6 +27,7 @@ Parameters are:
 
 * --t : Float which is QuickUMLS Threshold, should be between 0 and 1 (default --t=0.9).
 * --TUI : String which represents the TUI List filter, either "Alpha" or "Beta" (default --TUI=Beta).
+Note: Both TUI lists are available in TUI_Lists.pdf file in the root of the repository.
 
 2.4 Concatenate the multiple outputs to make one final file. For that, move to "data/outputchunkssmall" and run the 4th and last command mentioned in : useful_commands.txt
 
