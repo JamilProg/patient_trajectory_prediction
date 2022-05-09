@@ -23,10 +23,10 @@
 
 2.3 Once you're in concept_annotation folder, run quickUMLS_getCUI.py (if your machine is able to run about 25-30 threads, this process takes between hours to 3 days to finish, depending on the chosen parameters).
 
-Parameters are:
+Parameter is:
 
-* --t : Float which is QuickUMLS Threshold, should be between 0 and 1 (default --t=0.9).
 * --TUI : String which represents the TUI List filter, either "Alpha" or "Beta" (default --TUI=Beta).
+* You may also want to change the QuickUMLS Threshold (between 0 and 1). The default value is 0.7, but you are free to change it in the argument of the "matcher" variable.
 
 Note: Both TUI lists are available in TUI_Lists.pdf file in the root of the repository.
 

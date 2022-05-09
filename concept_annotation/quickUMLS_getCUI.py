@@ -6,7 +6,9 @@ import argparse
 
 # Global variables
 # QuickUMLS object
-# matcher = QuickUMLS(quickumls_fp='./QuickUMLS', overlapping_criteria='score', threshold=0.7, similarity_name='cosine', window=5)
+matcher = QuickUMLS(quickumls_fp='./QuickUMLS', overlapping_criteria='score', threshold=0.7, similarity_name='cosine', window=5)
+TUIs = TUI_alpha
+ARGS = None
 # TUI list
 TUI_beta = ["T195","T123","T122","T103","T120","T200","T126","T116","T196","T131","T125","T129","T130","T121","T192","T127","T104","T114","T197","T109","T038","T034","T070","T067","T068","T069","T043","T201","T045","T041","T032","T040","T042","T039","T044","T020","T190","T049","T019","T047","T050","T033","T037","T048","T191","T046","T184","T091","T090","T017","T029","T023","T030","T031","T022","T025","T026","T018","T021","T024","T079","T203","T074","T075","T100","T011","T008","T194","T007","T012","T204","T099","T013","T004","T096","T016","T015","T001","T101","T098","T097","T014","T010","T005","T058","T060","T061"]
 TUI_alpha = ["T020","T190","T049","T019","T047","T050","T033","T037","T048","T191","T046","T184","T038","T069","T068","T034","T070","T067","T043","T201","T045","T041","T044","T032","T040","T042","T039","T116","T195","T123","T122","T103","T120","T104","T200","T196","T126","T131","T125","T129","T130","T197","T114","T109","T121","T192","T127"]
@@ -75,7 +77,7 @@ def main_funct(file):
 def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('--TUI', type=str, default='Beta', help='Choose Alpha or Beta as TUI filter - default : Beta')
-    parser.add_argument('--t', type=float, default=0.9, help='Select a threshold (between 0 and 1) - default: 0.9')
+    # parser.add_argument('--t', type=float, default=0.9, help='Select a threshold (between 0 and 1) - default: 0.9')
 
     ARGStemp = parser.parse_args()
     return ARGStemp
@@ -83,14 +85,14 @@ def parse_arguments():
 
 if __name__ == "__main__":
     # Parse arguments
-    global ARGS
+    # global ARGS
     ARGS = parse_arguments()
 
     # Start the process
-    global matcher
-    matcher = QuickUMLS(quickumls_fp='./QuickUMLS', overlapping_criteria='score', threshold=ARGS.t, similarity_name='cosine', window=5)
-    print("QuickUMLS Threshold: ", ARGS.t)
-    global TUIs
+    # global matcher
+    # matcher = QuickUMLS(quickumls_fp='./QuickUMLS', overlapping_criteria='score', threshold=ARGS.t, similarity_name='cosine', window=5)
+    # print("QuickUMLS Threshold: ", ARGS.t)
+    # global TUIs
     if ARGS.TUI == "Alpha" or ARGS.TUI == "alpha":
         TUIs = TUI_alpha
         print("TUI list Alpha selected")
